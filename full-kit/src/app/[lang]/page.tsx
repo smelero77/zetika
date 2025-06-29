@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation"
 
-export default function LangRootPage() {
-  redirect("/en/sign-in")
+export default async function LangRootPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>
+}) {
+  const { lang } = await params
+  redirect(`/${lang}/sign-in`)
   return null
 }

@@ -66,7 +66,10 @@ export async function middleware(request: NextRequest) {
 
     // Redirect authenticated users away from guest routes
     if (isAuthenticated && isGuest) {
-      return redirect("/dashboards/analytics", request)
+      return redirect(
+        ensureLocalizedPathname("/dashboards/analytics", locale),
+        request
+      )
     }
 
     // Redirect unauthenticated users from protected routes to sign-in
@@ -78,7 +81,10 @@ export async function middleware(request: NextRequest) {
         redirectPathname = ensureRedirectPathname(redirectPathname, pathname)
       }
 
-      return redirect(redirectPathname, request)
+      return redirect(
+        ensureLocalizedPathname(redirectPathname, locale),
+        request
+      )
     }
   }
 

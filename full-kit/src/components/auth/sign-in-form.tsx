@@ -54,6 +54,9 @@ export function SignInForm() {
   async function onSubmit(data: SignInFormType) {
     const { email, password } = data
 
+    console.log("🔍 SignIn Debug - locale:", locale)
+    console.log("🔍 SignIn Debug - params:", params)
+
     try {
       const result = await signIn("credentials", {
         redirect: false,
@@ -65,8 +68,14 @@ export function SignInForm() {
         throw new Error(result.error)
       }
 
-      router.push(`/${locale}/dashboard`)
+      // Usar la URL que devuelve NextAuth o construir una como fallback
+      const redirectUrl = result?.url || `/${locale}/dashboards/analytics`
+      console.log("🔍 SignIn Debug - result:", result)
+      console.log("🔍 SignIn Debug - redirectUrl:", redirectUrl)
+
+      router.push(redirectUrl)
     } catch (error) {
+      console.error("🔍 SignIn Debug - error:", error)
       toast({
         variant: "destructive",
         title: "Sign In Failed",

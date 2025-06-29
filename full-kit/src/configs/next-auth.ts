@@ -1,4 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter"
+import bcrypt from "bcryptjs"
 
 import type { NextAuthOptions } from "next-auth"
 import type { Adapter } from "next-auth/adapters"
@@ -52,14 +53,18 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
+
         // Busca el usuario en la base de datos
         const user = await db.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
         })
-        if (!user) return null
-        // Aquí podrías agregar validación de contraseña con bcrypt si lo deseas
-        // if (!(await bcrypt.compare(credentials.password, user.password))) return null
-        // Por ahora acepta cualquier contraseña si el usuario existe
+        if (!user || !user.password) return null
+
+        // Validar la contraseña hasheada con bcrypt
+        if (!(await bcrypt.compare(credentials.password, user.password))) {
+          return null
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -100,9 +105,21 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async redirect({ url: _url, baseUrl: _baseUrl }) {
-      // Siempre redirige al dashboard de analytics tras login correcto
-      return "/dashboards/analytics"
+    async redirect({ url, baseUrl: _baseUrl }) {
+      console.log("🔍 NextAuth Debug - url:", url)
+      console.log("🔍 NextAuth Debug - baseUrl:", _baseUrl)
+
+      // Detectar el idioma de la URL previa o usar 'en' por defecto
+      const match = url.match(/\/([a-z]{2})\//)
+      const lang = match ? match[1] : "en"
+
+      console.log("🔍 NextAuth Debug - detected lang:", lang)
+
+      // Devolver URL absoluta en lugar de relativa
+      const redirectUrl = `${_baseUrl}/${lang}/dashboards/analytics`
+      console.log("🔍 NextAuth Debug - redirectUrl:", redirectUrl)
+
+      return redirectUrl
     },
   },
   debug: false, // Enable debug mode to see more information
