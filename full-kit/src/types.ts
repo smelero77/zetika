@@ -70,7 +70,7 @@ export interface UserType {
 }
 
 export interface RouteType {
-  type: "guest" | "public"
+  type: "guest" | "public" | "protected"
   exceptions?: string[]
 }
 

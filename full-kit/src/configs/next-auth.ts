@@ -100,9 +100,9 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async redirect({ url, baseUrl }) {
-      // Siempre redirige al dashboard tras login correcto
-      return "/dashboard"
+    async redirect({ url: _url, baseUrl: _baseUrl }) {
+      // Siempre redirige al dashboard de analytics tras login correcto
+      return "/dashboards/analytics"
     },
   },
   debug: false, // Enable debug mode to see more information

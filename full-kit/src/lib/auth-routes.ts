@@ -32,3 +32,7 @@ export function isPublicRoute(route: string) {
 export function isGuestRoute(route: string) {
   return isRouteType(route, "guest")
 }
+
+export function isProtectedRoute(route: string) {
+  return isRouteType(route, "protected")
+}

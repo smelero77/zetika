@@ -3,7 +3,11 @@ import { getToken } from "next-auth/jwt"
 
 import type { NextRequest } from "next/server"
 
-import { isGuestRoute, isPublicRoute } from "@/lib/auth-routes"
+import {
+  isGuestRoute,
+  isProtectedRoute,
+  isPublicRoute,
+} from "@/lib/auth-routes"
 import {
   ensureLocalizedPathname,
   getLocaleFromPathname,
@@ -51,7 +55,7 @@ export async function middleware(request: NextRequest) {
     const token = await getToken({ req: request })
     const isAuthenticated = !!token
     const isGuest = isGuestRoute(pathnameWithoutLocale)
-    const isProtected = !isGuest
+    const isProtected = isProtectedRoute(pathnameWithoutLocale)
 
     console.log("Middleware - auth check:", {
       pathname: pathnameWithoutLocale,
@@ -62,7 +66,7 @@ export async function middleware(request: NextRequest) {
 
     // Redirect authenticated users away from guest routes
     if (isAuthenticated && isGuest) {
-      return redirect("/dashboard", request)
+      return redirect("/dashboards/analytics", request)
     }
 
     // Redirect unauthenticated users from protected routes to sign-in
