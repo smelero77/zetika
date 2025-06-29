@@ -1,0 +1,532 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  Alerta        Alerta[]
+  sessions      Session[]
+}
+
+model Account {
+  id                       String  @id @default(uuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Actividad {
+  id                      Int                       @id @default(autoincrement())
+  idOficial               Int                       @unique
+  codigo                  String?                   @unique
+  descripcion             String
+  ActividadToConvocatoria ActividadToConvocatoria[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Alerta {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  nombre    String
+  filtros   Json
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Anuncio {
+  id               Int          @id @default(autoincrement())
+  numAnuncio       Int          @unique
+  titulo           String
+  tituloLeng       String?
+  texto            String?
+  url              String?
+  cve              String?
+  desDiarioOficial String?
+  fechaPublicacion DateTime?
+  convocatoriaId   Int
+  Convocatoria     Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model AyudaDeEstado {
+  id                 Int               @id @default(autoincrement())
+  idOficial          Int               @unique
+  tituloConvocatoria String
+  beneficiarioNombre String
+  importe            Float
+  ayudaEquivalente   Float
+  fechaConcesion     DateTime
+  convocatoriaId     Int
+  beneficiarioId     Int
+  instrumentoId      Int?
+  Beneficiario       Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  Convocatoria       Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
+  InstrumentoAyuda   InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+
+  @@index([beneficiarioId])
+  @@index([convocatoriaId])
+  @@index([instrumentoId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Beneficiario {
+  id               Int                @id @default(autoincrement())
+  idOficial        Int                @unique
+  nifCif           String?            @unique
+  nombre           String
+  AyudaDeEstado    AyudaDeEstado[]
+  Concesion        Concesion[]
+  GranBeneficiario GranBeneficiario[]
+  Minimis          Minimis[]
+  Sancion          Sancion[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model CatalogoObjetivo {
+  id          Int    @id @default(autoincrement())
+  idOficial   Int    @unique
+  descripcion String
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Categoria {
+  id                      Int                       @id @default(autoincrement())
+  nombre                  String                    @unique
+  CategoriaToConvocatoria CategoriaToConvocatoria[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Concesion {
+  id               Int               @id @default(autoincrement())
+  idOficial        Int               @unique
+  importe          Float
+  ayudaEquivalente Float
+  fechaConcesion   DateTime
+  convocatoriaId   Int
+  beneficiarioId   Int
+  instrumentoId    Int?
+  Beneficiario     Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  Convocatoria     Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
+  InstrumentoAyuda InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+
+  @@index([beneficiarioId])
+  @@index([convocatoriaId])
+  @@index([instrumentoId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ConcesionPartidoPolitico {
+  id                  Int          @id @default(autoincrement())
+  idOficial           Int          @unique
+  numeroConvocatoria  String
+  tituloConvocatoria  String
+  urlBasesReguladoras String?
+  codConcesion        String
+  beneficiario        String
+  instrumento         String
+  importe             Float
+  ayudaEquivalente    Float
+  tieneProyecto       Boolean
+  fechaConcesion      DateTime
+  convocatoriaId      Int
+  Convocatoria        Convocatoria @relation(fields: [convocatoriaId], references: [idOficial])
+
+  @@index([convocatoriaId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Convocatoria {
+  id                             Int                              @id @default(autoincrement())
+  idOficial                      Int                              @unique
+  codigoBDNS                     String                           @unique
+  titulo                         String
+  tituloCooficial                String?
+  descripcion                    String?
+  presupuestoTotal               Float?
+  urlBasesReguladoras            String?
+  sedeElectronica                String?
+  fechaPublicacion               DateTime
+  fechaInicioSolicitud           DateTime?
+  fechaFinSolicitud              DateTime?
+  plazoAbierto                   Boolean?
+  resumenIA                      String?
+  organoId                       String?
+  finalidadId                    Int?
+  reglamentoId                   Int?
+  codigoINVENTE                  String?
+  fechaRecepcion                 DateTime?
+  mrr                            Boolean?
+  nivel1                         String?
+  nivel2                         String?
+  nivel3                         String?
+  ayudaEstadoSANumber            String?
+  ayudaEstadoUrl                 String?
+  descripcionBasesReguladoras    String?
+  sePublicaDiarioOficial         Boolean?
+  textInicioSolicitud            String?
+  tipoConvocatoria               String?
+  contentHash                    String?
+  lastSyncedAt                   DateTime?
+  Anuncio                        Anuncio[]
+  AyudaDeEstado                  AyudaDeEstado[]
+  Concesion                      Concesion[]
+  ConcesionPartidoPolitico       ConcesionPartidoPolitico[]
+  Finalidad                      Finalidad?                       @relation(fields: [finalidadId], references: [idOficial])
+  Organo                         Organo?                          @relation(fields: [organoId], references: [idOficial])
+  ReglamentoUE                   ReglamentoUE?                    @relation(fields: [reglamentoId], references: [idOficial])
+  Minimis                        Minimis[]
+  Objetivo                       Objetivo[]
+  Sancion                        Sancion[]
+  ActividadToConvocatoria        ActividadToConvocatoria[]
+  CategoriaToConvocatoria        CategoriaToConvocatoria[]
+  ConvocatoriaToFondo            ConvocatoriaToFondo[]
+  ConvocatoriaToInstrumentoAyuda ConvocatoriaToInstrumentoAyuda[]
+  ConvocatoriaToRegion           ConvocatoriaToRegion[]
+  ConvocatoriaToTag              ConvocatoriaToTag[]
+  ConvocatoriaToTipoBeneficiario ConvocatoriaToTipoBeneficiario[]
+  documento                      documento[]
+
+  @@index([fechaPublicacion])
+  @@index([finalidadId])
+  @@index([organoId])
+  @@index([reglamentoId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Finalidad {
+  id           Int            @id @default(autoincrement())
+  idOficial    Int            @unique
+  descripcion  String         @unique
+  Convocatoria Convocatoria[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Fondo {
+  id                  Int                   @id @default(autoincrement())
+  nombre              String                @unique
+  ConvocatoriaToFondo ConvocatoriaToFondo[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model GranBeneficiario {
+  id             Int          @id @default(autoincrement())
+  ejercicio      Int
+  ayudaTotal     Float
+  beneficiarioId Int
+  Beneficiario   Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+
+  @@unique([beneficiarioId, ejercicio])
+  @@index([beneficiarioId])
+  @@index([ejercicio])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model InstrumentoAyuda {
+  id                             Int                              @id @default(autoincrement())
+  idOficial                      Int                              @unique
+  descripcion                    String
+  AyudaDeEstado                  AyudaDeEstado[]
+  Concesion                      Concesion[]
+  ConvocatoriaToInstrumentoAyuda ConvocatoriaToInstrumentoAyuda[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Minimis {
+  id               Int             @id @default(autoincrement())
+  idConcesion      Int             @unique
+  codigoConcesion  String
+  fechaConcesion   DateTime
+  fechaRegistro    DateTime
+  ayudaEquivalente Float
+  convocante       String
+  reglamento       String
+  instrumento      String
+  sectorActividad  String
+  convocatoriaId   Int
+  beneficiarioId   Int
+  sectorProductoId Int?
+  Beneficiario     Beneficiario    @relation(fields: [beneficiarioId], references: [id], onDelete: Cascade)
+  Convocatoria     Convocatoria    @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  SectorProducto   SectorProducto? @relation(fields: [sectorProductoId], references: [id])
+
+  @@index([beneficiarioId])
+  @@index([convocatoriaId])
+  @@index([fechaRegistro])
+  @@index([sectorProductoId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Objetivo {
+  id             Int          @id @default(autoincrement())
+  descripcion    String
+  convocatoriaId Int
+  Convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Organo {
+  id                 Int            @id @default(autoincrement())
+  idOficial          String         @unique
+  nombre             String
+  tipoAdministracion String?
+  Convocatoria       Convocatoria[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model PlanEstrategico {
+  id                   Int     @id @default(autoincrement())
+  idOficial            Int     @unique
+  descripcion          String
+  descripcionCooficial String?
+  tipoPlan             String
+  vigenciaDesde        Int
+  vigenciaHasta        Int
+  ambitos              String?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Region {
+  id                   Int                    @id @default(autoincrement())
+  idOficial            Int                    @unique
+  nombre               String
+  ConvocatoriaToRegion ConvocatoriaToRegion[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ReglamentoUE {
+  id           Int            @id @default(autoincrement())
+  idOficial    Int            @unique
+  descripcion  String
+  Convocatoria Convocatoria[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Sancion {
+  id                   Int          @id @default(autoincrement())
+  numeroConvocatoria   String
+  tituloConvocatoria   String
+  organoNivel1         String?
+  organoNivel2         String?
+  organoNivel3         String?
+  codigoINVENTE        String?
+  fechaConcesion       DateTime
+  infraccion           String
+  importe              Float
+  sancionado           String
+  fechaSancion         DateTime
+  importeMulta         Float
+  inicioInhabilitacion DateTime?
+  finInhabilitacion    DateTime?
+  beneficiarioId       Int
+  Beneficiario         Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+  Convocatoria         Convocatoria @relation(fields: [numeroConvocatoria], references: [codigoBDNS])
+
+  @@unique([numeroConvocatoria, sancionado, fechaSancion])
+  @@index([beneficiarioId])
+  @@index([numeroConvocatoria])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model SectorProducto {
+  id          Int       @id @default(autoincrement())
+  idOficial   Int       @unique
+  descripcion String
+  Minimis     Minimis[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Tag {
+  id                Int                 @id @default(autoincrement())
+  nombre            String              @unique
+  ConvocatoriaToTag ConvocatoriaToTag[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model TipoBeneficiario {
+  id                             Int                              @id @default(autoincrement())
+  idOficial                      Int                              @unique
+  descripcion                    String
+  ConvocatoriaToTipoBeneficiario ConvocatoriaToTipoBeneficiario[]
+}
+
+model ActividadToConvocatoria {
+  A            Int
+  B            Int
+  Actividad    Actividad    @relation(fields: [A], references: [id], onDelete: Cascade)
+  Convocatoria Convocatoria @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ActividadToConvocatoria_AB_pkey")
+  @@index([B], map: "_ActividadToConvocatoria_B_index")
+  @@map("_ActividadToConvocatoria")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model CategoriaToConvocatoria {
+  A            Int
+  B            Int
+  Categoria    Categoria    @relation(fields: [A], references: [id], onDelete: Cascade)
+  Convocatoria Convocatoria @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_CategoriaToConvocatoria_AB_pkey")
+  @@index([B], map: "_CategoriaToConvocatoria_B_index")
+  @@map("_CategoriaToConvocatoria")
+}
+
+model ConvocatoriaToFondo {
+  A            Int
+  B            Int
+  Convocatoria Convocatoria @relation(fields: [A], references: [id], onDelete: Cascade)
+  Fondo        Fondo        @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ConvocatoriaToFondo_AB_pkey")
+  @@index([B], map: "_ConvocatoriaToFondo_B_index")
+  @@map("_ConvocatoriaToFondo")
+}
+
+model ConvocatoriaToInstrumentoAyuda {
+  A                Int
+  B                Int
+  Convocatoria     Convocatoria     @relation(fields: [A], references: [id], onDelete: Cascade)
+  InstrumentoAyuda InstrumentoAyuda @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ConvocatoriaToInstrumentoAyuda_AB_pkey")
+  @@index([B], map: "_ConvocatoriaToInstrumentoAyuda_B_index")
+  @@map("_ConvocatoriaToInstrumentoAyuda")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ConvocatoriaToRegion {
+  A            Int
+  B            Int
+  Convocatoria Convocatoria @relation(fields: [A], references: [id], onDelete: Cascade)
+  Region       Region       @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ConvocatoriaToRegion_AB_pkey")
+  @@index([B], map: "_ConvocatoriaToRegion_B_index")
+  @@map("_ConvocatoriaToRegion")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ConvocatoriaToTag {
+  A            Int
+  B            Int
+  Convocatoria Convocatoria @relation(fields: [A], references: [id], onDelete: Cascade)
+  Tag          Tag          @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ConvocatoriaToTag_AB_pkey")
+  @@index([B], map: "_ConvocatoriaToTag_B_index")
+  @@map("_ConvocatoriaToTag")
+}
+
+model ConvocatoriaToTipoBeneficiario {
+  A                Int
+  B                Int
+  Convocatoria     Convocatoria     @relation(fields: [A], references: [id], onDelete: Cascade)
+  TipoBeneficiario TipoBeneficiario @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_ConvocatoriaToTipoBeneficiario_AB_pkey")
+  @@index([B], map: "_ConvocatoriaToTipoBeneficiario_B_index")
+  @@map("_ConvocatoriaToTipoBeneficiario")
+}
+
+model convocatoria_search {
+  id                       String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  convocatoria_id          Int
+  codigo_bdns              String?
+  titulo                   String
+  descripcion              String
+  resumen_ia               String?
+  tags_ia                  Json?
+  categorias_ia            Json?
+  embedding                Unsupported("vector")?
+  searchable               Unsupported("tsvector")?
+  fecha_publicacion        DateTime?                @db.Date
+  fecha_cierre             DateTime?                @db.Date
+  presupuesto_convocatoria Decimal?                 @db.Decimal(15, 2)
+  sector_economico         String?
+  tipo_ayuda               String?
+  origen_fondos            String?
+  comunidad_autonoma       String?
+  provincia                String?
+  municipio                String?
+  popularidad              Int?                     @default(0)
+  created_at               DateTime                 @default(now())
+  updated_at               DateTime
+  convocatoria_abierta     Boolean                  @default(false)
+  instrumentos_desc        Json?
+  modalidad_beneficiario   String?
+  objetivos_desc           Json?
+  perfil_familiar          String?
+  tipos_beneficiario_desc  Json?
+
+  @@index([convocatoria_abierta], map: "idx_conv_abierta")
+  @@index([fecha_publicacion, fecha_cierre], map: "idx_conv_fechas")
+  @@index([comunidad_autonoma, provincia, municipio], map: "idx_conv_geo")
+  @@index([modalidad_beneficiario], map: "idx_conv_modalidad_benef")
+  @@index([origen_fondos], map: "idx_conv_origen_fondos")
+  @@index([perfil_familiar], map: "idx_conv_perfil_fam")
+  @@index([presupuesto_convocatoria], map: "idx_conv_presupuesto")
+  @@index([sector_economico], map: "idx_conv_sector")
+  @@index([tipo_ayuda], map: "idx_conv_tipo_ayuda")
+}
+
+model documento {
+  id             Int          @id @default(autoincrement())
+  idOficial      Int          @unique
+  nombreFic      String?
+  descripcion    String?
+  longitud       BigInt?
+  fechaMod       DateTime?
+  fechaPublic    DateTime?
+  convocatoriaId Int
+  storage_path   String?
+  storage_url    String?
+  Convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+}
