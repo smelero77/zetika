@@ -1,0 +1,605 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Almacena cada convocatoria de subvención. Es la entidad central.
+/// Este modelo se basa en el objeto ConvocatoriaDetalle de la API de SNPSAP para capturar toda la información.
+model Convocatoria {
+  /// Identificador único interno en nuestra base de datos. Autoincremental.
+  id                          Int                        @id @default(autoincrement())
+  /// Identificador único de la convocatoria en la API de origen. CRÍTICO para hacer 'upserts' y no duplicar datos.
+  idOficial                   Int                        @unique
+  /// Código de la Base de Datos Nacional de Subvenciones. Es el identificador más conocido públicamente.
+  codigoBDNS                  String                     @unique
+  /// Título oficial de la convocatoria.
+  titulo                      String
+  /// Título en la lengua cooficial, si existe.
+  tituloCooficial             String?
+  /// Texto completo o extracto de la convocatoria, útil para búsquedas y resúmenes.
+  descripcion                 String?
+  /// Presupuesto total de la convocatoria, si se especifica.
+  presupuestoTotal            Float?
+  /// Enlace a las bases reguladoras oficiales (BOE, etc.).
+  urlBasesReguladoras         String?
+  /// Sede electrónica para presentar la solicitud.
+  sedeElectronica             String?
+  /// Fecha en que la convocatoria fue publicada en la BDNS.
+  fechaPublicacion            DateTime
+  /// Fecha de inicio del plazo para presentar solicitudes.
+  fechaInicioSolicitud        DateTime?
+  /// Fecha de fin del plazo para presentar solicitudes.
+  fechaFinSolicitud           DateTime?
+  /// Indica si la convocatoria tiene un plazo abierto de forma indefinida.
+  plazoAbierto                Boolean?
+  /// Resumen conciso de la convocatoria, generado por IA para una lectura rápida.
+  resumenIA                   String?
+  /// ID del órgano convocante (clave foránea).
+  organoId                    String?
+  /// ID de la finalidad de la ayuda (clave foránea).
+  finalidadId                 Int?
+  /// ID del reglamento europeo aplicable (clave foránea).
+  reglamentoId                Int?
+  /// Código de inventario, otro identificador que puede ser útil.
+  codigoINVENTE               String?
+  /// Fecha en que la convocatoria fue recibida por el sistema de origen.
+  fechaRecepcion              DateTime?
+  /// Indica si la convocatoria está relacionada con el Mecanismo de Recuperación y Resiliencia (MRR).
+  mrr                         Boolean?
+  /// Nivel jerárquico 1 del órgano convocante (Ej: "GALICIA").
+  nivel1                      String?
+  /// Nivel jerárquico 2 del órgano convocante (Ej: "AGENCIA GALLEGA DE LAS INDUSTRIAS CULTURALES (AGADIC)").
+  nivel2                      String?
+  /// Nivel jerárquico 3 del órgano convocante, si existe.
+  nivel3                      String?
+  ayudaEstadoSANumber         String?
+  ayudaEstadoUrl              String?
+  descripcionBasesReguladoras String?
+  sePublicaDiarioOficial      Boolean?
+  textInicioSolicitud         String?
+  tipoConvocatoria            String?
+  /// Hash del contenido para detectar cambios en la convocatoria
+  contentHash                 String?
+  /// Fecha de la última sincronización con la API externa
+  lastSyncedAt                DateTime?
+  anuncios                    Anuncio[]
+  ayudasDeEstado              AyudaDeEstado[]
+  concesiones                 Concesion[]
+  concesionesPartidos         ConcesionPartidoPolitico[]
+  finalidad                   Finalidad?                 @relation(fields: [finalidadId], references: [idOficial])
+  organo                      Organo?                    @relation(fields: [organoId], references: [idOficial])
+  reglamento                  ReglamentoUE?              @relation(fields: [reglamentoId], references: [idOficial])
+  minimis                     Minimis[]
+  objetivos                   Objetivo[]
+  sanciones                   Sancion[]
+  documentos                  Documento[]
+  sectoresEconomicos          Actividad[]                @relation("ActividadToConvocatoria")
+  categorias                  Categoria[]                @relation("CategoriaToConvocatoria")
+  fondosEuropeos              Fondo[]                    @relation("ConvocatoriaToFondo")
+  instrumentosAyuda           InstrumentoAyuda[]         @relation("ConvocatoriaToInstrumentoAyuda")
+  regionesDeImpacto           Region[]                   @relation("ConvocatoriaToRegion")
+  tags                        Tag[]                      @relation("ConvocatoriaToTag")
+  tiposBeneficiario           TipoBeneficiario[]         @relation("ConvocatoriaToTipoBeneficiario")
+
+  @@index([organoId])
+  @@index([finalidadId])
+  @@index([reglamentoId])
+  @@index([fechaPublicacion])
+}
+
+/// Almacena cada ayuda específica que ha sido concedida a un beneficiario concreto.
+model Concesion {
+  /// Identificador único interno.
+  id               Int               @id @default(autoincrement())
+  /// ID oficial de la concesión en la API. Se usa para evitar duplicados.
+  idOficial        Int               @unique
+  /// Importe monetario concedido.
+  importe          Float
+  /// Importe de la ayuda expresado en "equivalente de subvención bruta".
+  ayudaEquivalente Float
+  /// Fecha en la que se concedió oficialmente la ayuda.
+  fechaConcesion   DateTime
+  /// ID (oficial) de la convocatoria a la que pertenece.
+  convocatoriaId   Int
+  /// ID (oficial) del beneficiario que ha recibido la ayuda.
+  beneficiarioId   Int
+  /// ID (oficial) del instrumento de ayuda.
+  instrumentoId    Int?
+  beneficiario     Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoria     Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
+  instrumento      InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+
+  @@index([convocatoriaId])
+  @@index([beneficiarioId])
+  @@index([instrumentoId])
+}
+
+/// Representa a una persona física o jurídica (empresa, asociación, etc.) que puede recibir una subvención.
+model Beneficiario {
+  /// Identificador único interno.
+  id                Int                @id @default(autoincrement())
+  /// ID oficial de la persona/entidad en la API (idPersona).
+  idOficial         Int                @unique
+  /// NIF/CIF del beneficiario. Es opcional porque no siempre está disponible.
+  nifCif            String?            @unique
+  /// Nombre o Razón Social del beneficiario.
+  nombre            String
+  ayudasDeEstado    AyudaDeEstado[]
+  concesiones       Concesion[]
+  grandesBeneficios GranBeneficiario[]
+  minimis           Minimis[]
+  sanciones         Sancion[]
+}
+
+model Documento {
+  id             Int          @id @default(autoincrement())
+  idOficial      Int          @unique
+  nombreFic      String?
+  descripcion    String?
+  longitud       BigInt?
+  fechaMod       DateTime?
+  fechaPublic    DateTime?
+  convocatoriaId Int
+  storagePath    String?      @map("storage_path")
+  storageUrl     String?      @map("storage_url")
+  convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+  @@map("documento")
+}
+
+model Anuncio {
+  id               Int          @id @default(autoincrement())
+  numAnuncio       Int          @unique
+  titulo           String
+  tituloLeng       String?
+  texto            String?
+  url              String?
+  cve              String?
+  desDiarioOficial String?
+  fechaPublicacion DateTime?
+  convocatoriaId   Int
+  convocatoria     Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+}
+
+model Objetivo {
+  id             Int          @id @default(autoincrement())
+  descripcion    String
+  convocatoriaId Int
+  convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+}
+
+model GranBeneficiario {
+  id             Int          @id @default(autoincrement())
+  ejercicio      Int
+  ayudaTotal     Float
+  beneficiarioId Int
+  beneficiario   Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+
+  @@unique([beneficiarioId, ejercicio])
+  @@index([beneficiarioId])
+  @@index([ejercicio])
+}
+
+model Minimis {
+  id               Int             @id @default(autoincrement())
+  idConcesion      Int             @unique
+  codigoConcesion  String
+  fechaConcesion   DateTime
+  fechaRegistro    DateTime
+  ayudaEquivalente Float
+  convocante       String
+  reglamento       String
+  instrumento      String
+  sectorActividad  String
+  convocatoriaId   Int
+  beneficiarioId   Int
+  sectorProductoId Int?
+  beneficiario     Beneficiario    @relation(fields: [beneficiarioId], references: [id], onDelete: Cascade)
+  convocatoria     Convocatoria    @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  sectorProducto   SectorProducto? @relation(fields: [sectorProductoId], references: [id])
+
+  @@index([fechaRegistro])
+  @@index([convocatoriaId])
+  @@index([beneficiarioId])
+  @@index([sectorProductoId])
+}
+
+model PlanEstrategico {
+  id                   Int     @id @default(autoincrement())
+  idOficial            Int     @unique
+  descripcion          String
+  descripcionCooficial String?
+  tipoPlan             String
+  vigenciaDesde        Int
+  vigenciaHasta        Int
+  ambitos              String?
+}
+
+model Sancion {
+  id                   Int          @id @default(autoincrement())
+  numeroConvocatoria   String
+  tituloConvocatoria   String
+  organoNivel1         String?
+  organoNivel2         String?
+  organoNivel3         String?
+  codigoINVENTE        String?
+  fechaConcesion       DateTime
+  infraccion           String
+  importe              Float
+  sancionado           String
+  fechaSancion         DateTime
+  importeMulta         Float
+  inicioInhabilitacion DateTime?
+  finInhabilitacion    DateTime?
+  beneficiarioId       Int
+  beneficiario         Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoria         Convocatoria @relation(fields: [numeroConvocatoria], references: [codigoBDNS])
+
+  @@unique([numeroConvocatoria, sancionado, fechaSancion])
+  @@index([numeroConvocatoria])
+  @@index([beneficiarioId])
+}
+
+model ConcesionPartidoPolitico {
+  id                  Int          @id @default(autoincrement())
+  idOficial           Int          @unique
+  numeroConvocatoria  String
+  tituloConvocatoria  String
+  urlBasesReguladoras String?
+  codConcesion        String
+  beneficiario        String
+  instrumento         String
+  importe             Float
+  ayudaEquivalente    Float
+  tieneProyecto       Boolean
+  fechaConcesion      DateTime
+  convocatoriaId      Int
+  convocatoria        Convocatoria @relation(fields: [convocatoriaId], references: [idOficial])
+
+  @@index([convocatoriaId])
+}
+
+model AyudaDeEstado {
+  id                 Int               @id @default(autoincrement())
+  idOficial          Int               @unique
+  tituloConvocatoria String
+  beneficiarioNombre String
+  importe            Float
+  ayudaEquivalente   Float
+  fechaConcesion     DateTime
+  convocatoriaId     Int
+  beneficiarioId     Int
+  instrumentoId      Int?
+  beneficiario       Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoria       Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
+  instrumento        InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+
+  @@index([convocatoriaId])
+  @@index([beneficiarioId])
+  @@index([instrumentoId])
+}
+
+model Organo {
+  id                 Int            @id @default(autoincrement())
+  idOficial          String         @unique
+  nombre             String
+  tipoAdministracion String?
+  convocatorias      Convocatoria[]
+}
+
+model Region {
+  id            Int            @id @default(autoincrement())
+  idOficial     Int            @unique
+  nombre        String
+  convocatorias Convocatoria[] @relation("ConvocatoriaToRegion")
+}
+
+model Finalidad {
+  id            Int            @id @default(autoincrement())
+  idOficial     Int            @unique
+  descripcion   String         @unique
+  convocatorias Convocatoria[]
+}
+
+model TipoBeneficiario {
+  id            Int            @id @default(autoincrement())
+  idOficial     Int            @unique
+  descripcion   String
+  convocatorias Convocatoria[] @relation("ConvocatoriaToTipoBeneficiario")
+}
+
+model InstrumentoAyuda {
+  id             Int             @id @default(autoincrement())
+  idOficial      Int             @unique
+  descripcion    String
+  ayudasDeEstado AyudaDeEstado[]
+  concesiones    Concesion[]
+  convocatorias  Convocatoria[]  @relation("ConvocatoriaToInstrumentoAyuda")
+}
+
+model Actividad {
+  id            Int            @id @default(autoincrement())
+  idOficial     Int            @unique
+  codigo        String?        @unique
+  descripcion   String
+  convocatorias Convocatoria[] @relation("ActividadToConvocatoria")
+}
+
+model ReglamentoUE {
+  id            Int            @id @default(autoincrement())
+  idOficial     Int            @unique
+  descripcion   String
+  convocatorias Convocatoria[]
+}
+
+model Fondo {
+  id            Int            @id @default(autoincrement())
+  nombre        String         @unique
+  convocatorias Convocatoria[] @relation("ConvocatoriaToFondo")
+}
+
+model SectorProducto {
+  id          Int       @id @default(autoincrement())
+  idOficial   Int       @unique
+  descripcion String
+  minimis     Minimis[]
+}
+
+model CatalogoObjetivo {
+  id          Int    @id @default(autoincrement())
+  idOficial   Int    @unique
+  descripcion String
+}
+
+model Categoria {
+  id            Int            @id @default(autoincrement())
+  nombre        String         @unique
+  convocatorias Convocatoria[] @relation("CategoriaToConvocatoria")
+}
+
+model Tag {
+  id            Int            @id @default(autoincrement())
+  nombre        String         @unique
+  convocatorias Convocatoria[] @relation("ConvocatoriaToTag")
+}
+
+model User {
+  id              String          @id @default(cuid())
+  name            String?
+  email           String?         @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  /// Dirección completa (calle, número, etc.)
+  address         String?
+  /// Ciudad de residencia
+  city            String?
+  /// Nombre de pila del usuario
+  firstName       String?
+  /// Lengua preferida (es, ca, eu, gl, va)
+  language        String?
+  /// Apellidos del usuario
+  lastName        String?
+  /// Número de teléfono (formato nacional español)
+  phoneNumber     String?
+  /// Código postal
+  postalCode      String?
+  /// Provincia de residencia
+  province        String?
+  accounts        Account[]
+  alertas         Alerta[]
+  sessions        Session[]
+  perfilesUsuario UsuarioPerfil[]
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Alerta {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  nombre    String
+  filtros   Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ConvocatoriaSearch {
+  id                      String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  convocatoriaId          Int                      @map("convocatoria_id")
+  codigoBdns              String?                  @map("codigo_bdns")
+  titulo                  String
+  descripcion             String
+  resumenIa               String?                  @map("resumen_ia")
+  tagsIa                  Json?                    @map("tags_ia")
+  categoriasIa            Json?                    @map("categorias_ia")
+  embedding               Unsupported("vector")?
+  searchable              Unsupported("tsvector")?
+  fechaPublicacion        DateTime?                @map("fecha_publicacion") @db.Date
+  fechaCierre             DateTime?                @map("fecha_cierre") @db.Date
+  presupuestoConvocatoria Decimal?                 @map("presupuesto_convocatoria") @db.Decimal(15, 2)
+  sectorEconomico         String?                  @map("sector_economico")
+  tipoAyuda               String?                  @map("tipo_ayuda")
+  origenFondos            String?                  @map("origen_fondos")
+  comunidadAutonoma       String?                  @map("comunidad_autonoma")
+  provincia               String?
+  municipio               String?
+  popularidad             Int?                     @default(0)
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  convocatoriaAbierta     Boolean                  @default(false) @map("convocatoria_abierta")
+  instrumentosDesc        Json?                    @map("instrumentos_desc")
+  modalidadBeneficiario   String?                  @map("modalidad_beneficiario")
+  objetivosDesc           Json?                    @map("objetivos_desc")
+  perfilFamiliar          String?                  @map("perfil_familiar")
+  tiposBeneficiarioDesc   Json?                    @map("tipos_beneficiario_desc")
+
+  @@index([fechaPublicacion, fechaCierre], map: "idx_conv_fechas")
+  @@index([presupuestoConvocatoria], map: "idx_conv_presupuesto")
+  @@index([sectorEconomico], map: "idx_conv_sector")
+  @@index([tipoAyuda], map: "idx_conv_tipo_ayuda")
+  @@index([origenFondos], map: "idx_conv_origen_fondos")
+  @@index([comunidadAutonoma, provincia, municipio], map: "idx_conv_geo")
+  @@index([modalidadBeneficiario], map: "idx_conv_modalidad_benef")
+  @@index([perfilFamiliar], map: "idx_conv_perfil_fam")
+  @@index([convocatoriaAbierta], map: "idx_conv_abierta")
+  @@map("convocatoria_search")
+}
+
+/// Almacena la información de perfilado de cada empresa cliente/autónomo.
+/// Un usuario puede crear múltiples perfiles.
+model UsuarioPerfil {
+  id                  Int                       @id @default(autoincrement())
+  userId              String
+  nombre_perfil       String
+  nombre_empresa      String?
+  nif_cif             String?                   @unique
+  direccion           String?
+  telefono            String?
+  email               String?
+  fecha_creacion      DateTime                  @default(now())
+  cofinanciacion_disp Boolean?
+  disponible_socios   Boolean?
+  tamanoEmpresaId     Int?
+  sectorId            Int?
+  ubicacionId         Int?
+  sector              SectorEmpresa?            @relation(fields: [sectorId], references: [id])
+  tamanoEmpresa       TamanoEmpresa?            @relation(fields: [tamanoEmpresaId], references: [id])
+  ubicacion           Ubicacion?                @relation(fields: [ubicacionId], references: [id])
+  user                User                      @relation(fields: [userId], references: [id])
+  ambitosInteres      UsuarioPerfilAmbito[]
+  necesidades         UsuarioPerfilNecesidad[]
+  plazosCarga         UsuarioPerfilPlazoCarga[]
+
+  @@index([userId])
+}
+
+/// Catálogo de tamaños de empresa
+model TamanoEmpresa {
+  id               Int             @id @default(autoincrement())
+  nombre_i18n      Json
+  descripcion_i18n Json?
+  perfiles         UsuarioPerfil[]
+}
+
+/// Catálogo de sectores empresariales
+model SectorEmpresa {
+  id          Int             @id @default(autoincrement())
+  nombre_i18n Json
+  perfiles    UsuarioPerfil[]
+}
+
+/// Catálogo de ubicaciones (provincia, comunidad, etc.)
+model Ubicacion {
+  id               Int             @id @default(autoincrement())
+  provincia_i18n   Json
+  comAutonoma_i18n Json
+  pais_i18n        Json
+  perfiles         UsuarioPerfil[]
+
+  @@unique([provincia_i18n, comAutonoma_i18n, pais_i18n])
+}
+
+/// Catálogo de tipos de necesidades/intereses del cliente
+model NecesidadCliente {
+  id          Int                      @id @default(autoincrement())
+  nombre_i18n Json
+  perfiles    UsuarioPerfilNecesidad[]
+}
+
+/// Tabla de unión para las necesidades del UsuarioPerfil (Many-to-Many)
+model UsuarioPerfilNecesidad {
+  usuarioPerfilId Int
+  necesidadId     Int
+  prioridad       Int?
+  createdAt       DateTime         @default(now())
+  necesidad       NecesidadCliente @relation(fields: [necesidadId], references: [id])
+  usuarioPerfil   UsuarioPerfil    @relation(fields: [usuarioPerfilId], references: [id])
+
+  @@id([usuarioPerfilId, necesidadId])
+  @@index([usuarioPerfilId])
+  @@index([necesidadId])
+}
+
+/// Catálogo de ámbitos de interés (provincial, autonómico, estatal)
+model AmbitoInteres {
+  id          Int                   @id @default(autoincrement())
+  nombre_i18n Json
+  perfiles    UsuarioPerfilAmbito[]
+}
+
+/// Tabla de unión para los ámbitos de interés del UsuarioPerfil (Many-to-Many)
+model UsuarioPerfilAmbito {
+  usuarioPerfilId Int
+  ambitoId        Int
+  interesado      Boolean
+  createdAt       DateTime      @default(now())
+  ambito          AmbitoInteres @relation(fields: [ambitoId], references: [id])
+  usuarioPerfil   UsuarioPerfil @relation(fields: [usuarioPerfilId], references: [id])
+
+  @@id([usuarioPerfilId, ambitoId])
+  @@index([usuarioPerfilId])
+  @@index([ambitoId])
+}
+
+/// Catálogo de opciones de plazos y carga administrativa
+model PlazoCarga {
+  id          Int                       @id @default(autoincrement())
+  nombre_i18n Json
+  perfiles    UsuarioPerfilPlazoCarga[]
+}
+
+/// Tabla de unión para los plazos y carga administrativa del UsuarioPerfil (Many-to-Many)
+model UsuarioPerfilPlazoCarga {
+  usuarioPerfilId Int
+  plazoId         Int
+  cumple          Boolean
+  createdAt       DateTime      @default(now())
+  plazo           PlazoCarga    @relation(fields: [plazoId], references: [id])
+  usuarioPerfil   UsuarioPerfil @relation(fields: [usuarioPerfilId], references: [id])
+
+  @@id([usuarioPerfilId, plazoId])
+  @@index([usuarioPerfilId])
+  @@index([plazoId])
+}
