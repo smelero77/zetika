@@ -10,6 +10,12 @@ export const navigationsData: NavigationType[] = [
         iconName: "ChartPie",
       },
       {
+        title: "Buscador",
+        href: "/dashboards/buscador",
+        iconName: "Search",
+        label: "New",
+      },
+      {
         title: "CRM",
         href: "/dashboards/crm",
         iconName: "ChartBar",

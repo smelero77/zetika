@@ -142,4 +142,118 @@ export interface FileType {
   size: number
   type: string
   url: string
-} 
+}
+
+// Tipos para el Buscador de Subvenciones
+export type TipoUsuarioPrincipal = 'empresas' | 'particulares'
+
+export interface BuscadorFiltersEmpresa {
+  // Filtros específicos para Autónomos/Sociedades
+  sectorEconomico?: string[]
+  tamanoEmpresa?: string[]
+  formaJuridica?: string[]
+  antiguedadEmpresa?: string[]
+  facturacionAnual?: {
+    min?: number
+    max?: number
+  }
+  numeroEmpleados?: {
+    min?: number
+    max?: number
+  }
+  
+  // Filtros geográficos
+  comunidadAutonoma?: string[]
+  provincia?: string[]
+  
+  // Filtros por características de la ayuda
+  presupuestoMin?: number
+  presupuestoMax?: number
+  fechaPublicacionDesde?: Date
+  fechaPublicacionHasta?: Date
+  soloAbiertas?: boolean
+  
+  // Filtros por tipo de ayuda
+  instrumentosAyuda?: string[]
+  origenFondos?: string[]
+  finalidadAyuda?: string[]
+  
+  // Búsqueda por texto
+  busquedaTexto?: string
+}
+
+export interface BuscadorFiltersParticular {
+  // Filtros específicos para Particulares/Familias
+  situacionLaboral?: string[]
+  nivelEstudios?: string[]
+  grupoEdad?: string[]
+  situacionFamiliar?: string[]
+  numeroHijos?: number
+  ingresosFamiliares?: {
+    min?: number
+    max?: number
+  }
+  discapacidad?: boolean
+  desempleo?: boolean
+  
+  // Filtros geográficos
+  comunidadAutonoma?: string[]
+  provincia?: string[]
+  
+  // Filtros por características de la ayuda
+  presupuestoMin?: number
+  presupuestoMax?: number
+  fechaPublicacionDesde?: Date
+  fechaPublicacionHasta?: Date
+  soloAbiertas?: boolean
+  
+  // Filtros por tipo de ayuda
+  instrumentosAyuda?: string[]
+  origenFondos?: string[]
+  finalidadAyuda?: string[]
+  
+  // Búsqueda por texto
+  busquedaTexto?: string
+}
+
+export type BuscadorFilters = BuscadorFiltersEmpresa | BuscadorFiltersParticular
+
+export interface ConvocatoriaCard {
+  id: number
+  codigoBdns: string
+  titulo: string
+  descripcion: string
+  resumenIa?: string
+  fechaPublicacion: Date
+  fechaCierre?: Date
+  presupuesto?: number
+  organo: string
+  estado: 'abierta' | 'cerrada'
+  sectorEconomico?: string
+  tipoAyuda?: string
+  origenFondos?: string
+}
+
+export interface ConcesionCard {
+  id: number
+  beneficiario: string
+  nifCif?: string
+  importe: number
+  fechaConcesion: Date
+  convocatoria: string
+  codigoBdns: string
+  instrumentoAyuda?: string
+}
+
+export interface BeneficiarioCard {
+  id: number
+  nombre: string
+  nifCif?: string
+  totalAyudas: number
+  numeroAyudas: number
+  ultimaAyuda?: Date
+  sectores: string[]
+  tipoEntidad: 'persona' | 'empresa' | 'asociacion' | 'otro'
+}
+
+export type BuscadorResultType = 'convocatorias' | 'concesiones' | 'beneficiarios' 
