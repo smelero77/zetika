@@ -43,10 +43,10 @@ async function syncPlanesEstrategicos(jobName: string, runId: string) {
         metrics.increment('etl.pages.failed');
         break;
       }
-          } catch (error: any) {
+          } catch (error: unknown) {
         totalErrors++;
         totalPagesFailed++;
-        logger.error('Error de red al fetch planes estratégicos', { ...pageMeta, errorMessage: error.message });
+        logger.error('Error de red al fetch planes estratégicos', { ...pageMeta, errorMessage: (error as Error).message });
         metrics.increment('etl.pages.failed');
         break;
       }
@@ -87,10 +87,10 @@ async function syncPlanesEstrategicos(jobName: string, runId: string) {
         const duration = Date.now() - startItem;
         metrics.histogram('etl.items.processed.duration_ms', duration);
         logger.info('Plan estratégico procesado exitosamente', { ...itemMeta, durationMs: duration });
-      } catch (e: any) {
+      } catch (e: unknown) {
         totalErrors++;
         metrics.increment('etl.items.errors');
-        logger.error('Error procesando plan estratégico', { ...itemMeta, errorMessage: e.message });
+        logger.error('Error procesando plan estratégico', { ...itemMeta, errorMessage: (e as Error).message });
       }
     }
 
@@ -125,10 +125,10 @@ export async function POST(req: Request) {
     metrics.histogram('etl.jobs.total_duration_ms', durationMs);
     logger.info('Job Planes Estratégicos Completado', { jobName, runId, ...stats, durationMs });
     return NextResponse.json({ success: stats.errors === 0, stats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const durationMs = Date.now() - startTime;
     metrics.increment('etl.jobs.fatal_errors');
-    logger.error('Job Planes Estratégicos Falló Catastróficamente', { jobName, runId, errorMessage: error.message, durationMs });
+    logger.error('Job Planes Estratégicos Falló Catastróficamente', { jobName, runId, errorMessage: (error as Error).message, durationMs });
     return NextResponse.json({ success: false, error: 'Job failed' }, { status: 500 });
   }
 } 

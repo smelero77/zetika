@@ -15,6 +15,57 @@ import {
   existingConvocatoriasCache,
 } from './cache';
 
+// Tipos para los datos de convocatorias
+interface ConvocatoriaDetalle {
+    id: number;
+    codigoBDNS: string;
+    descripcion: string;
+    descripcionLeng?: string;
+    descripcionBasesReguladoras?: string;
+    presupuestoTotal?: number;
+    urlBasesReguladoras?: string;
+    sedeElectronica?: string;
+    fechaPublicacion?: string;
+    fechaRecepcion?: string;
+    fechaInicioSolicitud?: string;
+    fechaFinSolicitud?: string;
+    abierto?: boolean;
+    mrr?: string;
+    tipoConvocatoria?: string;
+    sePublicaDiarioOficial?: boolean;
+    textInicio?: string;
+    ayudaEstado?: string;
+    urlAyudaEstado?: string;
+    descripcionFinalidad?: string;
+    reglamento?: { autorizacion?: string };
+    tiposBeneficiarios?: Array<{ id: number }>;
+    instrumentos?: Array<{ id: number }>;
+    regiones?: Array<{ id: number }>;
+    fondos?: Array<{ descripcion: string }>;
+    sectores?: Array<{ codigo: string }>;
+    documentos?: Array<{
+        id: number;
+        nombreFic: string;
+        descripcion: string;
+        long: number;
+        datMod?: string;
+        datPublicacion?: string;
+    }>;
+    anuncios?: Array<{
+        numAnuncio: string;
+        titulo: string;
+        tituloLeng?: string;
+        texto: string;
+        url: string;
+        cve: string;
+        desDiarioOficial: string;
+        datPublicacion?: string;
+    }>;
+    objetivos?: Array<{
+        descripcion: string;
+    }>;
+}
+
 const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
 
 export async function getConvocatoriaDetalle(bdns: string, jobName: string, runId: string) {
@@ -44,7 +95,7 @@ export async function getConvocatoriaDetalle(bdns: string, jobName: string, runI
     }
 }
 
-export async function processAndSaveDetalle(detalle: any, jobName: string, runId: string) {
+export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobName: string, runId: string) {
     const logMeta = { jobName, runId, catalogName: 'Convocatorias', convocatoriaId: detalle.id };
     const startItem = Date.now();
     
@@ -53,11 +104,11 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
     // --- PASO 1: PREPARAR DATOS (FUERA DE CUALQUIER TRANSACCIÓN) ---
     const finalidad = detalle.descripcionFinalidad ? getCachedFinalidad(detalle.descripcionFinalidad) : null;
     const reglamento = detalle.reglamento?.autorizacion ? getCachedReglamento(detalle.reglamento.autorizacion) : null;
-    const tiposBeneficiarioIds = getCachedTiposBeneficiario((detalle.tiposBeneficiarios || []).map((t: any) => t.id).filter(Boolean));
-    const instrumentosIds = getCachedInstrumentos((detalle.instrumentos || []).map((i: any) => i.id).filter(Boolean));
-    const regionesIds = getCachedRegiones((detalle.regiones || []).map((r: any) => r.id).filter(Boolean));
-    const fondosIds = getCachedFondos((detalle.fondos || []).map((f: any) => f.descripcion));
-    const sectoresIds = getCachedSectores((detalle.sectores || []).map((s: any) => s.codigo).filter(Boolean));
+    const tiposBeneficiarioIds = getCachedTiposBeneficiario((detalle.tiposBeneficiarios || []).map((t) => t.id).filter(Boolean));
+    const instrumentosIds = getCachedInstrumentos((detalle.instrumentos || []).map((i) => i.id).filter(Boolean));
+    const regionesIds = getCachedRegiones((detalle.regiones || []).map((r) => r.id).filter(Boolean));
+    const fondosIds = getCachedFondos((detalle.fondos || []).map((f) => f.descripcion));
+    const sectoresIds = getCachedSectores((detalle.sectores || []).map((s) => s.codigo).filter(Boolean));
 
     // --- PASO 2: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
     const convocatoria = await db.convocatoria.upsert({
@@ -119,7 +170,7 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
     });
 
     // --- PASO 3: SINCRONIZAR RELACIONES 1-N EN PARALELO ---
-    const syncTasks: Promise<any>[] = [];
+    const syncTasks: Promise<unknown>[] = [];
     const syncTaskNames: string[] = [];
 
     if (detalle.documentos?.length > 0) {
@@ -127,7 +178,7 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
         syncTasks.push(db.$transaction([
             db.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             db.documento.createMany({
-                data: detalle.documentos.map((doc: any) => ({
+                data: detalle.documentos.map((doc) => ({
                     idOficial: doc.id,
                     nombreFic: doc.nombreFic,
                     descripcion: doc.descripcion,
@@ -146,7 +197,7 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
         syncTasks.push(db.$transaction([
             db.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             db.anuncio.createMany({
-                data: detalle.anuncios.map((an: any) => ({
+                data: detalle.anuncios.map((an) => ({
                     numAnuncio: an.numAnuncio,
                     titulo: an.titulo,
                     tituloLeng: an.tituloLeng,
@@ -167,7 +218,7 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
         syncTasks.push(db.$transaction([
             db.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             db.objetivo.createMany({
-                data: detalle.objetivos.map((obj: any) => ({
+                data: detalle.objetivos.map((obj) => ({
                     descripcion: obj.descripcion,
                     convocatoriaId: convocatoria.id,
                 })),
@@ -179,7 +230,7 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
     const syncResults = await Promise.allSettled(syncTasks);
     const documentosProcesados = detalle.documentos || [];
 
-    const failedTasks: { name: string, reason: any }[] = [];
+    const failedTasks: { name: string, reason: unknown }[] = [];
     syncResults.forEach((result, index) => {
         if (result.status === 'rejected') {
             const taskName = syncTaskNames[index] ?? 'unknown_task';
@@ -214,25 +265,25 @@ export async function processAndSaveDetalle(detalle: any, jobName: string, runId
     return { hash: newHash, documentos: documentosProcesados };
 }
 
-export function hasConvocatoriaChanged(detalle: any): boolean {
+export function hasConvocatoriaChanged(detalle: ConvocatoriaDetalle): boolean {
     const newHash = computeContentHash(detalle);
     const oldHash = existingConvocatoriasCache.get(Number(detalle.id)) || '';
     return oldHash !== newHash;
 }
 
-export function convocatoriaExistsInCache(detalle: any): boolean {
+export function convocatoriaExistsInCache(detalle: ConvocatoriaDetalle): boolean {
     return existingConvocatoriasCache.has(Number(detalle.id));
 }
 
-export function getStoredConvocatoriaHash(detalle: any): string {
+export function getStoredConvocatoriaHash(detalle: ConvocatoriaDetalle): string {
     return existingConvocatoriasCache.get(Number(detalle.id)) || '';
 }
 
-export function updateConvocatoriaCache(detalle: any, processedHash: string): void {
+export function updateConvocatoriaCache(detalle: ConvocatoriaDetalle, processedHash: string): void {
     existingConvocatoriasCache.set(Number(detalle.id), processedHash);
 }
 
-export function getConvocatoriaStatus(detalle: any) {
+export function getConvocatoriaStatus(detalle: ConvocatoriaDetalle) {
     const exists = existingConvocatoriasCache.has(Number(detalle.id));
     const storedHash = existingConvocatoriasCache.get(Number(detalle.id)) || '';
     const currentHash = computeContentHash(detalle);

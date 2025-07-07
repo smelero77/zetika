@@ -98,7 +98,7 @@ export function convocatoriaExists(idOficial: number): boolean {
 }
 
 // Actualizar cache de convocatorias
-export function updateConvocatoriaCache(detalle: any, hash: string) {
+export function updateConvocatoriaCache(detalle: { idOficial?: number }, hash: string) {
   if (detalle && detalle.idOficial) {
     existingConvocatoriasCache.set(detalle.idOficial, hash);
   }
