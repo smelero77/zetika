@@ -1,15 +1,15 @@
 export const metrics = {
-  increment: (...args: any[]) => {
+  increment: (...args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
       console.log('[metrics.increment]', ...args);
     }
   },
-  gauge: (...args: any[]) => {
+  gauge: (...args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
       console.log('[metrics.gauge]', ...args);
     }
   },
-  histogram: (...args: any[]) => {
+  histogram: (...args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
       console.log('[metrics.histogram]', ...args);
     }

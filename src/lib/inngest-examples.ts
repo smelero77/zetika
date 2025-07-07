@@ -111,7 +111,7 @@ export async function ejecutarSincronizacionConRetraso(
  */
 export async function ejecutarSincronizacionConDatos(
   tipo: keyof typeof INNGEST_CONFIG.EVENTS,
-  datosPersonalizados: Record<string, any>
+  datosPersonalizados: Record<string, unknown>
 ) {
   try {
     const eventName = INNGEST_CONFIG.EVENTS[tipo];
@@ -288,7 +288,7 @@ export class InngestService {
     console.log(`🔄 Iniciando sincronización de: ${tipo}`);
     
     try {
-      const result = await ejecutarSincronizacionIndividual(tipo as any);
+      const result = await ejecutarSincronizacionIndividual(tipo as keyof typeof INNGEST_CONFIG.EVENTS);
       console.log(`✅ Sincronización de ${tipo} iniciada exitosamente`);
       return result;
     } catch (error) {
@@ -304,7 +304,7 @@ export class InngestService {
     console.log(`⏰ Programando sincronización de ${tipo} en ${retrasoMinutos} minutos`);
     
     try {
-      const result = await ejecutarSincronizacionConRetraso(tipo as any, retrasoMinutos);
+      const result = await ejecutarSincronizacionConRetraso(tipo as keyof typeof INNGEST_CONFIG.EVENTS, retrasoMinutos);
       console.log(`✅ Sincronización de ${tipo} programada exitosamente`);
       return result;
     } catch (error) {

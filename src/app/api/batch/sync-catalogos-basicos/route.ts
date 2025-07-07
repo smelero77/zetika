@@ -10,7 +10,7 @@ const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
 /**
  * Sincroniza un catálogo simple (id + descripcion).
  */
-async function syncSimpleCatalog(jobName: string, runId: string, catalogName: string, endpoint: string, model: any) {
+async function syncSimpleCatalog(jobName: string, runId: string, catalogName: string, endpoint: string, model: { upsert: (params: { where: { idOficial: number }; update: { descripcion: string }; create: { idOficial: number; descripcion: string } }) => Promise<unknown> }) {
   const logMeta = { jobName, runId, catalogName, endpoint };
   const batchJobName = `${jobName}-${catalogName}`;
   
@@ -49,7 +49,7 @@ async function syncSimpleCatalog(jobName: string, runId: string, catalogName: st
       throw new Error(`API responded with status ${response.status}: ${errorText}`);
     }
 
-    const items: { id: any; descripcion: string }[] =
+    const items: { id: number; descripcion: string }[] =
       response.status === 204 ? [] : await response.json();
 
     logger.info(`Datos recibidos para ${catalogName}:`, { 

@@ -2,7 +2,7 @@ import type { CoreFeatureType } from "../../types"
 
 import { Card } from "@/components/ui/card"
 
-interface FeatureCardProps extends CoreFeatureType {}
+type FeatureCardProps = CoreFeatureType
 
 export function FeatureCard({ title, description, icon: Icon }: FeatureCardProps) {
   return (

@@ -33,7 +33,7 @@ export function ContactUsForm() {
 
   const { isSubmitting } = form.formState
 
-  async function onSubmit(_data: ContactUsType) {
+  async function onSubmit() {
     toast({
       title: "¡Éxito!",
       description: "Tu mensaje ha sido enviado correctamente. Te contactaremos pronto.",

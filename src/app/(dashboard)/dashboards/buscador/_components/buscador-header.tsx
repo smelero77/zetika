@@ -1,13 +1,10 @@
 "use client"
 
-import { Search, Filter, RotateCcw, Building, Users, Target, Sparkles, X } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { useBuscador } from "./buscador-provider"
 import type { BuscadorFiltersEmpresa, BuscadorFiltersParticular } from "@/types"

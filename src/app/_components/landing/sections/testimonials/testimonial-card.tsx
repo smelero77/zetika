@@ -5,7 +5,7 @@ import type { TestimonialType } from "../../types"
 
 import { Card } from "@/components/ui/card"
 
-interface TestimonialCardProps extends TestimonialType {}
+type TestimonialCardProps = TestimonialType
 
 export function TestimonialCard({ 
   name, 

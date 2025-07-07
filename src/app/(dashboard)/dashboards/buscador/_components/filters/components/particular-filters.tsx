@@ -27,7 +27,7 @@ interface ParticularFiltersProps {
 }
 
 export function ParticularFilters({ filters }: ParticularFiltersProps) {
-  const { updateFilter, toggleArrayFilter, updateRangeFilter } = useFilterActions()
+  const { updateFilter, toggleArrayFilter } = useFilterActions()
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
   
   const toggleSection = (sectionName: string) => {

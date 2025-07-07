@@ -5,7 +5,7 @@ export async function GET() {
   const diagnostics = {
     timestamp: new Date().toISOString(),
     baseUrl: SNPSAP_API_BASE_URL,
-    tests: {} as any
+    tests: {} as Record<string, unknown>
   };
 
   try {
@@ -27,7 +27,7 @@ export async function GET() {
       try {
         console.log(`Probando método ${method}...`);
         const response = await fetch(SNPSAP_API_BASE_URL, {
-          method: method as any,
+          method: method as 'HEAD' | 'GET' | 'OPTIONS',
           headers: { 
             'Accept': 'application/json',
             'User-Agent': 'Zetika-Diagnostic/1.0'
@@ -120,15 +120,15 @@ export async function GET() {
     console.log('=== FIN DEL DIAGNÓSTICO ===');
     
     // Determinar si algún test fue exitoso
-    const hasSuccess = Object.values(diagnostics.tests).some((test: any) => test.success);
+    const hasSuccess = Object.values(diagnostics.tests).some((test: unknown) => (test as { success?: boolean }).success);
     
     return NextResponse.json({
       success: hasSuccess,
       diagnostics,
       summary: {
         totalTests: Object.keys(diagnostics.tests).length,
-        successfulTests: Object.values(diagnostics.tests).filter((test: any) => test.success).length,
-        failedTests: Object.values(diagnostics.tests).filter((test: any) => !test.success).length
+        successfulTests: Object.values(diagnostics.tests).filter((test: unknown) => (test as { success?: boolean }).success).length,
+        failedTests: Object.values(diagnostics.tests).filter((test: unknown) => !(test as { success?: boolean }).success).length
       }
     });
 

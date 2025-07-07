@@ -86,7 +86,7 @@ export function ChartStyle({
   config: ChartConfig
 }) {
   const colorConfig = Object.entries(config).filter(
-    ([_, config]) => config.theme || config.color
+    ([, config]) => config.theme || config.color
   )
 
   if (!colorConfig.length) {
@@ -129,8 +129,8 @@ type ChartTooltipContentProps = ComponentProps<
     nameKey?: string
     labelKey?: string
     active?: boolean
-    payload?: any[]
-    label?: any
+    payload?: unknown[]
+    label?: unknown
   }
 
 export function ChartTooltipContent({
@@ -201,7 +201,7 @@ export function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item: any, index: number) => {
+        {payload.map((item: unknown, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
           const indicatorColor = color || item.payload.fill || item.color

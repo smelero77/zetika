@@ -3,13 +3,13 @@ import { logger } from '~/server/lib/logger';
 
 // Cache global para catálogos
 export const catalogCache = {
-  finalidades: new Map<string, any>(),
-  reglamentos: new Map<number, any>(),
-  tiposBeneficiario: new Map<number, any>(),
-  instrumentos: new Map<number, any>(),
-  regiones: new Map<number, any>(),
-  fondos: new Map<string, any>(),
-  sectores: new Map<string, any>(),
+  finalidades: new Map<string, unknown>(),
+  reglamentos: new Map<number, unknown>(),
+  tiposBeneficiario: new Map<number, unknown>(),
+  instrumentos: new Map<number, unknown>(),
+  regiones: new Map<number, unknown>(),
+  fondos: new Map<string, unknown>(),
+  sectores: new Map<string, unknown>(),
 };
 
 // Cache de convocatorias existentes

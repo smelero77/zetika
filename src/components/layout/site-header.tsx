@@ -20,9 +20,6 @@ const navigation = [
 
 export function SiteHeader() {
   const pathname = usePathname()
-  if (pathname !== "/") {
-    return null
-  }
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -44,6 +41,10 @@ export function SiteHeader() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  if (pathname !== "/") {
+    return null
+  }
 
   const handleThemeToggle = () => {
     if (mounted) {

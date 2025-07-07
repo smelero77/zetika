@@ -1,8 +1,5 @@
 import { inngest } from "./client";
 import { db } from "~/server/db";
-import { logger } from "~/server/lib/logger";
-import { metrics } from "~/server/lib/metrics";
-import { SNPSAP_API_BASE_URL } from "~/server/lib/constants";
 import { loadCatalogCache, loadExistingConvocatoriasCache, updateConvocatoriaCache } from "~/server/services/cache";
 import {
   getConvocatoriaDetalle,
@@ -11,8 +8,6 @@ import {
   getConvocatoriasPage,
 } from "~/server/services/convocatorias";
 import { fetchAndStoreDocument } from "~/server/services/storage";
-
-const PORTAL = process.env.SNPSAP_PORTAL ?? "GE";
 const PAGE_SIZE = 200;
 
 function chunk<T>(array: T[], size: number): T[][] {
@@ -49,7 +44,7 @@ export const createConvocatoriaJobs = inngest.createFunction(
 
       const items = data.content || [];
       for (const _item of items) {
-        const item = _item as any;
+        const item = _item as { numeroConvocatoria?: string; id?: string; descripcion?: string };
         if (!item || !item.numeroConvocatoria || !item.id) continue;
         const { hasChanged } = getConvocatoriaStatus(item);
         if (hasChanged) {
@@ -105,7 +100,7 @@ export const processConvocatoriaBatch = inngest.createFunction(
   },
   { event: "app/convocatoria.process.batch" },
   async ({ event, step, logger }) => {
-    const { convocatorias, batch_index, total_batches, total_convocatorias } = event.data;
+    const { convocatorias, batch_index, total_batches } = event.data;
     logger.info(`📦 Procesando lote ${batch_index}/${total_batches} (${convocatorias.length} convocatorias)`);
     const allDocEvents: Array<{
       name: string;
@@ -125,10 +120,10 @@ export const processConvocatoriaBatch = inngest.createFunction(
         }
         const { hash, documentos } = await processAndSaveDetalle(detalle, 'inngest-batch', event.id || 'unknown');
         updateConvocatoriaCache(detalle, hash);
-        return { documentos, bdns: (detalle as any).codigoBDNS || convo.bdns };
+        return { documentos, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
       });
       if (result && result.documentos.length > 0) {
-        const docEvents = result.documentos.map((doc: any) => ({
+        const docEvents = result.documentos.map((doc: { id: number }) => ({
           name: "app/document.process.storage",
           data: {
             bdns: result.bdns,
@@ -185,7 +180,7 @@ export const syncCatalogosBasicos = inngest.createFunction(
     retries: 3,
   },
   { event: "app/catalogos.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de catálogos básicos...");
 
     try {
@@ -227,7 +222,7 @@ export const syncRegiones = inngest.createFunction(
     retries: 3,
   },
   { event: "app/regiones.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de regiones...");
 
     try {
@@ -269,7 +264,7 @@ export const syncGrandesBeneficiarios = inngest.createFunction(
     retries: 3,
   },
   { event: "app/grandes-beneficiarios.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de grandes beneficiarios...");
 
     try {
@@ -310,7 +305,7 @@ export const syncAyudasDeEstado = inngest.createFunction(
     retries: 3,
   },
   { event: "app/ayudas-estado.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de ayudas de estado...");
 
     try {
@@ -351,7 +346,7 @@ export const syncPartidosPoliticos = inngest.createFunction(
     retries: 3,
   },
   { event: "app/partidos-politicos.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de partidos políticos...");
 
     try {
@@ -392,7 +387,7 @@ export const syncConcesiones = inngest.createFunction(
     retries: 3,
   },
   { event: "app/concesiones.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de concesiones...");
 
     try {
@@ -433,7 +428,7 @@ export const syncSanciones = inngest.createFunction(
     retries: 3,
   },
   { event: "app/sanciones.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de sanciones...");
 
     try {
@@ -474,7 +469,7 @@ export const syncOrganos = inngest.createFunction(
     retries: 3,
   },
   { event: "app/organos.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de órganos...");
 
     try {
@@ -515,7 +510,7 @@ export const syncMinimis = inngest.createFunction(
     retries: 3,
   },
   { event: "app/minimis.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de minimis...");
 
     try {
@@ -556,7 +551,7 @@ export const syncPlanesEstrategicos = inngest.createFunction(
     retries: 3,
   },
   { event: "app/planes-estrategicos.sync.requested" },
-  async ({ step, logger, event }) => {
+  async ({ step, logger }) => {
     logger.info("🔄 Iniciando sincronización de planes estratégicos...");
 
     try {
@@ -602,7 +597,7 @@ export const syncAll = inngest.createFunction(
 
     try {
       // Ejecutar en orden de dependencias
-      const results = await step.run("sync-catalogos-basicos", async () => {
+      await step.run("sync-catalogos-basicos", async () => {
         const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-catalogos-basicos`;
         const response = await fetch(url, {
           method: 'POST',

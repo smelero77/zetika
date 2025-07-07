@@ -5,7 +5,7 @@ import { logger, batchLogger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
 
-const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
+
 
 /**
  * Sincroniza los Grandes Beneficiarios.

@@ -11,7 +11,6 @@ export {
   syncConcesiones,
   syncSanciones,
   syncOrganos,
-  syncMasters,
   syncMinimis,
   syncPlanesEstrategicos,
   syncAll,

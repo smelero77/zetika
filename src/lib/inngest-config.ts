@@ -15,6 +15,11 @@ export const INNGEST_CONFIG = {
   // Secret para autenticación de endpoints batch
   CRON_SECRET: process.env.CRON_SECRET || "default-secret",
   
+  // Variables de entorno de Inngest para producción
+  INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
+  INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
+  INNGEST_SERVE_HOST: process.env.INNGEST_SERVE_HOST,
+  
   // Configuración de logging
   LOG_LEVEL: process.env.INNGEST_LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'error' : 'warn'),
   
@@ -125,6 +130,17 @@ export function validateInngestConfig(): { valid: boolean; errors: string[] } {
   
   if (!INNGEST_CONFIG.BASE_URL) {
     errors.push("NEXTAUTH_URL no está configurado en las variables de entorno");
+  }
+  
+  // Validar variables de Inngest para producción
+  if (process.env.NODE_ENV === 'production') {
+    if (!INNGEST_CONFIG.INNGEST_EVENT_KEY) {
+      errors.push("INNGEST_EVENT_KEY no está configurado en las variables de entorno");
+    }
+    
+    if (!INNGEST_CONFIG.INNGEST_SIGNING_KEY) {
+      errors.push("INNGEST_SIGNING_KEY no está configurado en las variables de entorno");
+    }
   }
   
   return {

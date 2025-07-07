@@ -9,7 +9,7 @@ export function BuscadorTabs() {
   const handleTabChange = (resultType: string) => {
     dispatch({ 
       type: 'SET_RESULT_TYPE', 
-      payload: resultType as any 
+      payload: resultType as 'convocatorias' | 'concesiones' | 'beneficiarios'
     })
   }
 

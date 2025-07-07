@@ -4,7 +4,7 @@ import type { ComponentProps } from "react"
 
 import { cn } from "@/lib/utils"
 
-export interface InputGroupProps extends ComponentProps<"div"> {}
+export type InputGroupProps = ComponentProps<"div">
 
 export function InputGroup({ className, children, ...props }: InputGroupProps) {
   return (

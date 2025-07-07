@@ -13,7 +13,7 @@ export async function GET() {
         method: 'GET',
       });
       inngestEndpointStatus = response.ok ? "available" : `error-${response.status}`;
-    } catch (error) {
+    } catch {
       inngestEndpointStatus = "unavailable";
     }
 
@@ -26,7 +26,7 @@ export async function GET() {
           method: 'GET',
         });
         batchEndpointsStatus[key] = response.ok ? "available" : `error-${response.status}`;
-      } catch (error) {
+      } catch {
         batchEndpointsStatus[key] = "unavailable";
       }
     }

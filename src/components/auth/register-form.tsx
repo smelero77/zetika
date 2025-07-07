@@ -31,7 +31,6 @@ export function RegisterForm() {
     resolver: zodResolver(RegisterSchema),
   })
 
-  const redirectPathname = searchParams.get("redirectTo")
   const { isSubmitting, isDirty } = form.formState
   const isDisabled = isSubmitting || !isDirty
 

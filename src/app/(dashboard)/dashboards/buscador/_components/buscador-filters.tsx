@@ -1,17 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, MapPin, Building, Euro, FileText, Users, GraduationCap, Heart, Briefcase, Home, Award, Target } from "lucide-react"
+import { Calendar, MapPin, Building, Euro, FileText, Users, GraduationCap, Heart, Briefcase, Award, Target } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -167,12 +163,12 @@ export function BuscadorFilters() {
     }))
   }
 
-  const updateFilter = (key: string, value: any) => {
+  const updateFilter = (key: string, value: unknown) => {
     dispatch({ type: 'SET_FILTERS', payload: { [key]: value } })
   }
 
   const toggleArrayFilter = (key: string, value: string) => {
-    const currentArray = (filters as any)[key] || []
+    const currentArray = (filters as Record<string, string[]>)[key] || []
     const newArray = currentArray.includes(value)
       ? currentArray.filter((item: string) => item !== value)
       : [...currentArray, value]
@@ -180,7 +176,7 @@ export function BuscadorFilters() {
   }
 
   const updateRangeFilter = (key: string, subKey: 'min' | 'max', value: number) => {
-    const currentRange = (filters as any)[key] || {}
+    const currentRange = (filters as Record<string, { min?: number; max?: number }>)[key] || {}
     updateFilter(key, { ...currentRange, [subKey]: value })
   }
 
@@ -322,7 +318,7 @@ export function BuscadorFilters() {
             <div className="space-y-1 lg:space-y-2">
               <Label className="text-xs lg:text-sm font-light">Mínima: €{(empresaFilters.facturacionAnual?.min || 0).toLocaleString()}</Label>
               <Slider
-                value={[empresaFilters.facturacionAnual?.min || 0]}
+                value={[empresaFilters.facturacionAnual?.min ?? 0]}
                 onValueChange={([value]) => updateRangeFilter('facturacionAnual', 'min', value)}
                 max={5000000}
                 step={50000}
@@ -332,7 +328,7 @@ export function BuscadorFilters() {
             <div className="space-y-1 lg:space-y-2">
               <Label className="text-xs lg:text-sm font-light">Máxima: €{(empresaFilters.facturacionAnual?.max || 5000000).toLocaleString()}</Label>
               <Slider
-                value={[empresaFilters.facturacionAnual?.max || 5000000]}
+                value={[empresaFilters.facturacionAnual?.max ?? 5000000]}
                 onValueChange={([value]) => updateRangeFilter('facturacionAnual', 'max', value)}
                 max={5000000}
                 step={50000}

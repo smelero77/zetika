@@ -26,9 +26,6 @@ import { OAuthLinks } from "./oauth-links"
 
 export function SignInForm() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-
-  const redirectPathname = searchParams.get("redirectTo") || "/"
 
   const form = useForm<SignInFormType>({
     resolver: zodResolver(SignInSchema),

@@ -35,7 +35,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const { openMobile, setOpenMobile, isMobile } = useSidebar()
 
-  const renderMenuItem = (item: any) => {
+  const renderMenuItem = (item: { title: string; label?: string; items?: unknown[]; href?: string; iconName?: string }) => {
     const title = item.title
     const label = item.label
 
@@ -61,7 +61,7 @@ export function Sidebar() {
           </CollapsibleTrigger>
           <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
             <SidebarMenuSub>
-              {item.items.map((subItem: any) => (
+              {item.items?.map((subItem: { title: string; label?: string; items?: unknown[]; href?: string; iconName?: string }) => (
                 <SidebarMenuItem key={subItem.title}>
                   {renderMenuItem(subItem)}
                 </SidebarMenuItem>

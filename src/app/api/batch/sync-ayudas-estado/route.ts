@@ -47,7 +47,7 @@ async function syncAyudasDeEstado(jobName: string, runId: string) {
         metrics.increment('etl.pages.failed', { job: jobName, runId, page: currentPage, status: response.status });
         break;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       totalErrors++;
       totalPagesFailed++;
       logger.error('Error de red al fetch Ayudas de Estado', { ...pageMeta, err: error });
@@ -102,7 +102,7 @@ async function syncAyudasDeEstado(jobName: string, runId: string) {
         const duration = Date.now() - startItem;
         metrics.histogram('etl.items.processed.duration_ms', duration, { job: jobName, runId, type: 'ayudas-estado' });
         logger.info('Ayuda procesada exitosamente', { ...itemMeta, durationMs: duration });
-      } catch (error: any) {
+      } catch (error: unknown) {
         totalErrors++;
         metrics.increment('etl.items.errors', { job: jobName, runId, type: 'ayudas-estado' });
         logger.error('Error procesando Ayuda de Estado', { ...itemMeta, err: error });
@@ -140,7 +140,7 @@ export async function POST(req: Request) {
     metrics.histogram('etl.jobs.total_duration_ms', durationMs, { job: jobName, runId });
     logger.info('Job AyudasDeEstado Completado', { jobName, runId, ...stats, durationMs });
     return NextResponse.json({ success: stats.errors === 0, stats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const durationMs = Date.now() - startTime;
     metrics.increment('etl.jobs.fatal_errors', { job: jobName, runId });
     logger.error('Job AyudasDeEstado Falló Catastróficamente', { jobName, runId, err: error, durationMs });

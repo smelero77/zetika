@@ -58,10 +58,11 @@ async function syncMinimis(jobName: string, runId: string, mode: 'initial' | 'da
         metrics.increment('etl.pages.failed');
         break;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       totalErrors++;
       totalPagesFailed++;
-      logger.error('Error de red al fetch minimis', { ...pageMeta, errorMessage: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Error de red al fetch minimis', { ...pageMeta, errorMessage });
       metrics.increment('etl.pages.failed');
       break;
     }
@@ -117,10 +118,11 @@ async function syncMinimis(jobName: string, runId: string, mode: 'initial' | 'da
         const duration = Date.now() - startItem;
         metrics.histogram('etl.items.processed.duration_ms', duration);
         logger.info('Minimis procesado exitosamente', { ...itemMeta, durationMs: duration });
-      } catch (e: any) {
+      } catch (e: unknown) {
         totalErrors++;
         metrics.increment('etl.items.errors');
-        logger.error('Error procesando minimis', { ...itemMeta, errorMessage: e.message });
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        logger.error('Error procesando minimis', { ...itemMeta, errorMessage });
       }
     }
 
@@ -164,10 +166,11 @@ export async function POST(req: Request) {
     metrics.histogram('etl.jobs.total_duration_ms', durationMs);
     logger.info('Job Minimis Completado', { jobName, runId, ...stats, durationMs });
     return NextResponse.json({ success: stats.errors === 0, stats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const durationMs = Date.now() - startTime;
     metrics.increment('etl.jobs.fatal_errors');
-    logger.error('Job Minimis Falló Catastróficamente', { jobName, runId, errorMessage: error.message, durationMs });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Job Minimis Falló Catastróficamente', { jobName, runId, errorMessage, durationMs });
     return NextResponse.json({ success: false, error: 'Job failed' }, { status: 500 });
   }
 } 
