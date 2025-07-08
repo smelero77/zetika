@@ -42,6 +42,40 @@ postgres://postgres.qdsvtdkunixdjvncdjit:[PASSWORD]@aws-0-[REGION].pooler.supaba
 - **IPv4 + IPv6**: Supavisor pooler (puerto 6543) - Funciona en Vercel
 - **Optimizado**: Para serverless/edge functions como Vercel
 
+## Problema Adicional: Caracteres Especiales en Contraseña
+
+Si después del cambio a transaction mode ves este error:
+```
+invalid domain character in database URL
+```
+
+Significa que tu contraseña tiene **caracteres especiales** que necesitan ser **URL-encoded**.
+
+### Diagnosticar URL
+```
+GET https://tu-dominio.vercel.app/api/debug-database-url
+```
+
+### Generar Contraseña Encoded
+```
+POST https://tu-dominio.vercel.app/api/encode-password
+Content-Type: application/json
+
+{
+  "password": "tu_contraseña_actual"
+}
+```
+
+### Caracteres Problemáticos Comunes
+- `@` → `%40`
+- `#` → `%23` 
+- `%` → `%25`
+- `&` → `%26`
+- `+` → `%2B`
+- `=` → `%3D`
+- `?` → `%3F`
+- Espacio → `%20`
+
 ## Verificación
 
 Una vez aplicados los cambios, probar:
