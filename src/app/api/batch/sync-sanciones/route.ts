@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { db } from '~/server/db';
+import { dbETL } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
@@ -63,7 +63,7 @@ async function syncSanciones(jobName: string, runId: string) {
       const startItem = Date.now();
       try {
         // Verificamos que la convocatoria asociada exista en nuestra BD
-        const convocatoriaAsociada = await db.convocatoria.findUnique({
+        const convocatoriaAsociada = await dbETL.convocatoria.findUnique({
           where: { codigoBDNS: item.numeroConvocatoria },
         });
 
@@ -74,7 +74,7 @@ async function syncSanciones(jobName: string, runId: string) {
           continue;
         }
 
-        await db.sancion.upsert({
+        await dbETL.sancion.upsert({
           where: {
             numeroConvocatoria_sancionado_fechaSancion: {
               numeroConvocatoria: item.numeroConvocatoria,

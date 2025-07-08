@@ -19,7 +19,7 @@ const createPrismaClient = () =>
     },
   });
 
-// Cliente específico para ETL con logging mínimo y configuración optimizada
+// Cliente específico para ETL con configuración optimizada para Vercel
 const createETLPrismaClient = () =>
   new PrismaClient({
     log: ["error"], // Solo errores para procesos ETL
@@ -66,8 +66,8 @@ if (env.NODE_ENV !== "production") {
   globalForPrisma.prismaETL = dbETL;
 }
 
-// Manejo de cierre limpio en desarrollo
-if (env.NODE_ENV === "development") {
+// Manejo de cierre limpio
+if (typeof process !== 'undefined') {
   process.on('beforeExit', () => {
     void Promise.all([
       db.$disconnect(),
