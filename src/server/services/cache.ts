@@ -1,15 +1,24 @@
 import { db } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 
+// Tipos para el cache
+type CachedFinalidad = { id: number; idOficial: number; descripcion: string };
+type CachedReglamento = { id: number; idOficial: number; descripcion: string };
+type CachedTipoBeneficiario = { id: number; idOficial: number; descripcion: string };
+type CachedInstrumento = { id: number; idOficial: number; descripcion: string };
+type CachedRegion = { id: number; idOficial: number; nombre: string };
+type CachedFondo = { id: number; nombre: string };
+type CachedSector = { id: number; idOficial: number; codigo: string | null; descripcion: string };
+
 // Cache global para catálogos
 export const catalogCache = {
-  finalidades: new Map<string, unknown>(),
-  reglamentos: new Map<number, unknown>(),
-  tiposBeneficiario: new Map<number, unknown>(),
-  instrumentos: new Map<number, unknown>(),
-  regiones: new Map<number, unknown>(),
-  fondos: new Map<string, unknown>(),
-  sectores: new Map<string, unknown>(),
+  finalidades: new Map<string, CachedFinalidad>(),
+  reglamentos: new Map<number, CachedReglamento>(),
+  tiposBeneficiario: new Map<number, CachedTipoBeneficiario>(),
+  instrumentos: new Map<number, CachedInstrumento>(),
+  regiones: new Map<number, CachedRegion>(),
+  fondos: new Map<string, CachedFondo>(),
+  sectores: new Map<string, CachedSector>(),
 };
 
 // Cache de convocatorias existentes
@@ -45,7 +54,9 @@ export async function loadCatalogCache() {
   
   // Cargar sectores/actividades
   const sectores = await db.actividad.findMany();
-  sectores.forEach(s => catalogCache.sectores.set(s.codigo, s));
+  sectores.forEach(s => {
+    if (s.codigo) catalogCache.sectores.set(s.codigo, s);
+  });
   
   logger.info(`Cache cargado: ${finalidades.length} finalidades, ${reglamentos.length} reglamentos, ${tiposBeneficiario.length} tipos beneficiario, ${instrumentos.length} instrumentos, ${regiones.length} regiones, ${fondos.length} fondos, ${sectores.length} sectores`);
 }
@@ -58,38 +69,38 @@ export async function loadExistingConvocatoriasCache() {
     select: { idOficial: true, contentHash: true }
   });
   
-  rows.forEach(r => existingConvocatoriasCache.set(r.idOficial, r.contentHash !== null ? r.contentHash : ''));
+  rows.forEach(r => existingConvocatoriasCache.set(r.idOficial, r.contentHash || ''));
   
   logger.info(`Cache cargado: ${existingConvocatoriasCache.size} convocatorias existentes`);
 }
 
-// Funciones para obtener del cache
-export function getCachedFinalidad(descripcion: string | null) {
-  return descripcion ? catalogCache.finalidades.get(descripcion) : null;
+// Funciones para obtener del cache con tipos corregidos
+export function getCachedFinalidad(descripcion: string | null): CachedFinalidad | null {
+  return descripcion ? catalogCache.finalidades.get(descripcion) || null : null;
 }
 
-export function getCachedReglamento(idOficial: number) {
-  return catalogCache.reglamentos.get(idOficial);
+export function getCachedReglamento(idOficial: number): CachedReglamento | null {
+  return catalogCache.reglamentos.get(idOficial) || null;
 }
 
-export function getCachedTiposBeneficiario(ids: number[]) {
-  return ids.map(id => catalogCache.tiposBeneficiario.get(id)).filter(Boolean);
+export function getCachedTiposBeneficiario(ids: number[]): CachedTipoBeneficiario[] {
+  return ids.map(id => catalogCache.tiposBeneficiario.get(id)).filter((item): item is CachedTipoBeneficiario => item !== undefined);
 }
 
-export function getCachedInstrumentos(ids: number[]) {
-  return ids.map(id => catalogCache.instrumentos.get(id)).filter(Boolean);
+export function getCachedInstrumentos(ids: number[]): CachedInstrumento[] {
+  return ids.map(id => catalogCache.instrumentos.get(id)).filter((item): item is CachedInstrumento => item !== undefined);
 }
 
-export function getCachedRegiones(ids: number[]) {
-  return ids.map(id => catalogCache.regiones.get(id)).filter(Boolean);
+export function getCachedRegiones(ids: number[]): CachedRegion[] {
+  return ids.map(id => catalogCache.regiones.get(id)).filter((item): item is CachedRegion => item !== undefined);
 }
 
-export function getCachedFondos(nombres: string[]) {
-  return nombres.map(nombre => catalogCache.fondos.get(nombre)).filter(Boolean);
+export function getCachedFondos(nombres: string[]): CachedFondo[] {
+  return nombres.map(nombre => catalogCache.fondos.get(nombre)).filter((item): item is CachedFondo => item !== undefined);
 }
 
-export function getCachedSectores(codigos: string[]) {
-  return codigos.map(codigo => catalogCache.sectores.get(codigo)).filter(Boolean);
+export function getCachedSectores(codigos: string[]): CachedSector[] {
+  return codigos.map(codigo => catalogCache.sectores.get(codigo)).filter((item): item is CachedSector => item !== undefined);
 }
 
 // Verificar si convocatoria existe sin consultar BD
@@ -98,8 +109,9 @@ export function convocatoriaExists(idOficial: number): boolean {
 }
 
 // Actualizar cache de convocatorias
-export function updateConvocatoriaCache(detalle: { idOficial?: number }, hash: string) {
-  if (detalle && detalle.idOficial) {
-    existingConvocatoriasCache.set(detalle.idOficial, hash);
+export function updateConvocatoriaCache(detalle: { idOficial?: number; id?: number }, hash: string) {
+  const id = detalle.idOficial || detalle.id;
+  if (id) {
+    existingConvocatoriasCache.set(id, hash);
   }
 } 

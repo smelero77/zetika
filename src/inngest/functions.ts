@@ -138,9 +138,20 @@ export const processConvocatoriaBatch = inngest.createFunction(
   { event: "app/convocatoria.process.batch" },
   async ({ event, step, logger }) => {
     // Validación defensiva de los datos del evento
+    // Si por alguna razón el evento llega sin datos de convocatorias, registramos el incidente y finalizamos sin lanzar excepción.
     if (!event.data || !event.data.convocatorias) {
-      logger.error("Datos del evento inválidos", { eventData: event.data });
-      throw new Error("Evento sin datos de convocatorias válidos");
+      logger.warn("Evento recibido sin datos de convocatorias; se omite el procesamiento", {
+        eventId: event.id,
+        eventData: event.data,
+      });
+      return {
+        processedCount: 0,
+        documentsEnqueued: 0,
+        documentsFound: 0,
+        globalStats: null,
+        skipped: true,
+        reason: "Evento sin datos de convocatorias",
+      };
     }
 
     const { convocatorias, batch_index, total_batches } = event.data;

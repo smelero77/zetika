@@ -3,6 +3,22 @@ import { PrismaClient } from "@prisma/client";
 import { env } from "~/env";
 import { PRISMA_CONFIG } from "~/server/lib/constants";
 
+// Configuración específica para evitar prepared statements en entornos serverless
+const getConnectionUrl = (baseUrl: string, disablePreparedStatements = false) => {
+  const url = new URL(baseUrl);
+  
+  if (disablePreparedStatements) {
+    // Parámetros clave para evitar problemas de prepared statements en serverless
+    url.searchParams.set('prepared_statements', 'false');
+    url.searchParams.set('pgbouncer', 'true');
+  }
+  
+  // Configuración básica de SSL para producción
+  url.searchParams.set('sslmode', 'require');
+  
+  return url.toString();
+};
+
 const createPrismaClient = () =>
   new PrismaClient({
     log: PRISMA_CONFIG.LOG_LEVEL === 'query' 
@@ -14,18 +30,21 @@ const createPrismaClient = () =>
       : ["error"], // Solo errores por defecto
     datasources: {
       db: {
-        url: env.DATABASE_URL,
+        url: getConnectionUrl(env.DATABASE_URL),
       },
     },
   });
 
-// Cliente específico para ETL con configuración optimizada para Vercel
+// Cliente específico para ETL con prepared statements deshabilitados
 const createETLPrismaClient = () =>
   new PrismaClient({
     log: ["error"], // Solo errores para procesos ETL
     datasources: {
       db: {
-        url: env.DATABASE_URL_BATCH ?? env.DATABASE_URL,
+        url: getConnectionUrl(
+          env.DATABASE_URL_BATCH ?? env.DATABASE_URL, 
+          true // Desactivar prepared statements para ETL
+        ),
       },
     },
   });
@@ -58,7 +77,7 @@ const initializeETLPrismaClient = () => {
 
 export const db = globalForPrisma.prisma ?? initializePrismaClient();
 
-// Cliente ETL separado para procesos de sincronización
+// Cliente ETL separado para procesos de sincronización con prepared statements deshabilitados
 export const dbETL = globalForPrisma.prismaETL ?? initializeETLPrismaClient();
 
 if (env.NODE_ENV !== "production") {

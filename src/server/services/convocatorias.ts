@@ -147,7 +147,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     const sectoresIds = getCachedSectores((detalle.sectores || []).map((s) => s.codigo).filter(Boolean));
 
     // --- PASO 2: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
-    const convocatoria = await db.convocatoria.upsert({
+    const convocatoria = await dbETL.convocatoria.upsert({
         where: { idOficial: detalle.id },
         create: {
             idOficial: detalle.id,
@@ -211,9 +211,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
 
     if (detalle.documentos && detalle.documentos.length > 0) {
         syncTaskNames.push('documentos');
-        syncTasks.push(db.$transaction([
-            db.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            db.documento.createMany({
+        syncTasks.push(dbETL.$transaction([
+            dbETL.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+            dbETL.documento.createMany({
                 data: detalle.documentos.map((doc) => ({
                     idOficial: doc.id,
                     nombreFic: doc.nombreFic,
@@ -230,9 +230,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     
     if (detalle.anuncios && detalle.anuncios.length > 0) {
         syncTaskNames.push('anuncios');
-        syncTasks.push(db.$transaction([
-            db.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            db.anuncio.createMany({
+        syncTasks.push(dbETL.$transaction([
+            dbETL.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+            dbETL.anuncio.createMany({
                 data: detalle.anuncios.map((an) => ({
                     numAnuncio: parseNumber(an.numAnuncio),
                     titulo: an.titulo,
@@ -251,9 +251,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
 
     if (detalle.objetivos && detalle.objetivos.length > 0) {
         syncTaskNames.push('objetivos');
-        syncTasks.push(db.$transaction([
-            db.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            db.objetivo.createMany({
+        syncTasks.push(dbETL.$transaction([
+            dbETL.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+            dbETL.objetivo.createMany({
                 data: detalle.objetivos.map((obj) => ({
                     descripcion: obj.descripcion,
                     convocatoriaId: convocatoria.id,
@@ -282,7 +282,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     }
 
     // Actualizar hash y fecha de sincronización
-    await db.convocatoria.update({
+    await dbETL.convocatoria.update({
         where: { id: convocatoria.id },
         data: {
             contentHash: newHash,
