@@ -34,6 +34,8 @@ export const env = createEnv({
     SNPSAP_PORTAL: z.string().optional(),
     BETTERSTACK_SOURCE_TOKEN: z.string().optional(),
     PRISMA_LOG_LEVEL: z.string().optional(),
+    // URL de base de datos sin prepared statements para procesos ETL
+    DATABASE_URL_BATCH: z.string().url().optional(),
   },
 
   /**
@@ -67,6 +69,7 @@ export const env = createEnv({
     SNPSAP_PORTAL: process.env.SNPSAP_PORTAL,
     BETTERSTACK_SOURCE_TOKEN: process.env.BETTERSTACK_SOURCE_TOKEN,
     PRISMA_LOG_LEVEL: process.env.PRISMA_LOG_LEVEL,
+    DATABASE_URL_BATCH: process.env.DATABASE_URL_BATCH,
     
     // Variables del cliente
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

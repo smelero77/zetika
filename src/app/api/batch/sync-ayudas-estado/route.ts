@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { db } from '~/server/db';
+import { dbETL as db } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';

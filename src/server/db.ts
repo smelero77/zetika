@@ -25,7 +25,7 @@ const createETLPrismaClient = () =>
     log: ["error"], // Solo errores para procesos ETL
     datasources: {
       db: {
-        url: env.DATABASE_URL,
+        url: env.DATABASE_URL_BATCH ?? env.DATABASE_URL,
       },
     },
   });
