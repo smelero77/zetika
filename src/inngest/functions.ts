@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import { db } from "~/server/db";
+import { dbETL } from "~/server/db";
 import { loadCatalogCache, loadExistingConvocatoriasCache, updateConvocatoriaCache } from "~/server/services/cache";
 import {
   getConvocatoriaDetalle,
@@ -7,7 +7,16 @@ import {
   getConvocatoriaStatus,
   getConvocatoriasPage,
 } from "~/server/services/convocatorias";
-import { fetchAndStoreDocument } from "~/server/services/storage";
+import { fetchAndStoreDocument, getDocumentStats } from "~/server/services/storage";
+
+// Interfaz mínima para verificación de convocatorias en listas paginadas
+interface ConvocatoriaListItem {
+  id: number;
+  codigoBDNS: string;
+  descripcion: string;
+  fechaPublicacion?: string;
+}
+
 const PAGE_SIZE = 200;
 
 function chunk<T>(array: T[], size: number): T[][] {
@@ -39,14 +48,26 @@ export const createConvocatoriaJobs = inngest.createFunction(
 
     while (!isLastPage) {
       const data = await step.run(`fetch-page-${currentPage}`, async () => {
-        return await getConvocatoriasPage(currentPage, PAGE_SIZE, 'inngest-create-jobs', event.id || 'unknown');
+        // Usar modo 'initial' para carga completa o 'incremental' para actualizaciones
+        const modo = event.data?.modo || 'initial';
+        return await getConvocatoriasPage(currentPage, PAGE_SIZE, 'inngest-create-jobs', event.id || 'unknown', modo);
       });
 
       const items = data.content || [];
       for (const _item of items) {
         const item = _item as { numeroConvocatoria?: string; id?: string; descripcion?: string };
         if (!item || !item.numeroConvocatoria || !item.id) continue;
-        const { hasChanged } = getConvocatoriaStatus(item);
+        
+        // Crear un objeto mínimo compatible con getConvocatoriaStatus
+        const mockDetalle = {
+          id: parseInt(item.id),
+          codigoBDNS: item.numeroConvocatoria,
+          descripcion: item.descripcion || '',
+          // Campos mínimos requeridos
+          fechaPublicacion: new Date().toISOString(),
+        } as ConvocatoriaListItem;
+        
+        const { hasChanged } = getConvocatoriaStatus(mockDetalle);
         if (hasChanged) {
           allItemsToProcess.push({
             bdns: item.numeroConvocatoria!,
@@ -102,6 +123,7 @@ export const processConvocatoriaBatch = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { convocatorias, batch_index, total_batches } = event.data;
     logger.info(`📦 Procesando lote ${batch_index}/${total_batches} (${convocatorias.length} convocatorias)`);
+    
     const allDocEvents: Array<{
       name: string;
       data: {
@@ -109,6 +131,9 @@ export const processConvocatoriaBatch = inngest.createFunction(
         docId: number;
       };
     }> = [];
+    
+    let totalDocumentosEncontrados = 0;
+    
     for (const convo of convocatorias) {
       const result = await step.run(`process-item-${convo.bdns}`, async () => {
         if (!convo.bdns) {
@@ -120,9 +145,17 @@ export const processConvocatoriaBatch = inngest.createFunction(
         }
         const { hash, documentos } = await processAndSaveDetalle(detalle, 'inngest-batch', event.id || 'unknown');
         updateConvocatoriaCache(detalle, hash);
+        
+        // Log información de documentos encontrados
+        if (documentos.length > 0) {
+          logger.info(`📄 Convocatoria ${convo.bdns} tiene ${documentos.length} documentos para descargar`);
+        }
+        
         return { documentos, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
       });
+      
       if (result && result.documentos.length > 0) {
+        totalDocumentosEncontrados += result.documentos.length;
         const docEvents = result.documentos.map((doc: { id: number }) => ({
           name: "app/document.process.storage",
           data: {
@@ -133,11 +166,46 @@ export const processConvocatoriaBatch = inngest.createFunction(
         allDocEvents.push(...docEvents);
       }
     }
+    
+    // Enviar eventos de documentos si los hay
     if (allDocEvents.length > 0) {
       await step.sendEvent("fan-out-all-documents-for-batch", allDocEvents);
+      logger.info(`📋 ${allDocEvents.length} documentos encolados para descarga asíncrona`, {
+        batch_index,
+        total_batches,
+        documentosEncontrados: totalDocumentosEncontrados,
+        documentosEncolados: allDocEvents.length
+      });
+    } else {
+      logger.info(`📋 No se encontraron documentos para descargar en este lote`, {
+        batch_index,
+        total_batches
+      });
     }
-    logger.info(`✅ Lote ${batch_index}/${total_batches} completado`);
-    return { processedCount: convocatorias.length, documentsEnqueued: allDocEvents.length };
+    
+    // Obtener estadísticas generales de documentos al final
+    const stats = await step.run("get-document-stats", async () => {
+      return await getDocumentStats();
+    });
+    
+    logger.info(`✅ Lote ${batch_index}/${total_batches} completado`, {
+      convocatoriasProcesadas: convocatorias.length,
+      documentosEncontrados: totalDocumentosEncontrados,
+      documentosEncolados: allDocEvents.length,
+      estadisticasGlobales: {
+        totalDocumentos: stats.total,
+        documentosAlmacenados: stats.conStorage,
+        documentosPendientes: stats.sinStorage,
+        porcentajeCompletado: `${stats.porcentajeCompletado}%`
+      }
+    });
+    
+    return { 
+      processedCount: convocatorias.length, 
+      documentsEnqueued: allDocEvents.length,
+      documentsFound: totalDocumentosEncontrados,
+      globalStats: stats
+    };
   }
 );
 
@@ -154,18 +222,47 @@ export const processDocumentStorage = inngest.createFunction(
     if (!bdns || !docId) {
         throw new Error("BDNS o docId no proporcionados en el evento");
     }
+    
     const bdnsString = String(bdns);
+    logger.info(`📥 Iniciando procesamiento de documento ${docId} para convocatoria ${bdnsString}`);
+    
+    // Verificar si ya existe en storage
+    const existingDoc = await step.run("check-existing-storage", async () => {
+      return await dbETL.documento.findUnique({
+        where: { idOficial: Number(docId) },
+        select: { storagePath: true, storageUrl: true, nombreFic: true }
+      });
+    });
+    
+    if (existingDoc?.storagePath && existingDoc?.storageUrl) {
+      logger.info(`📄 Documento ${docId} ya existe en storage, saltando descarga`, {
+        bdns: bdnsString,
+        docId,
+        nombreArchivo: existingDoc.nombreFic,
+        storagePath: existingDoc.storagePath
+      });
+      return { docId, storagePath: existingDoc.storagePath, skipped: true };
+    }
+    
     const { storagePath, publicUrl } = await step.run("fetch-and-store", () => 
         fetchAndStoreDocument(bdnsString, Number(docId))
     );
+    
     await step.run("update-db-record", () => 
-        db.documento.updateMany({
+        dbETL.documento.updateMany({
             where: { idOficial: Number(docId) },
             data: { storagePath, storageUrl: publicUrl },
         })
     );
-    logger.info(`📄 Documento ${docId} almacenado`);
-    return { docId, storagePath };
+    
+    logger.info(`✅ Documento ${docId} procesado y almacenado exitosamente`, {
+      bdns: bdnsString,
+      docId,
+      storagePath,
+      publicUrl
+    });
+    
+    return { docId, storagePath, skipped: false };
   }
 );
 
@@ -847,5 +944,83 @@ export const syncAll = inngest.createFunction(
       logger.error("❌ Error en sincronización completa", error);
       throw error;
     }
+  }
+); 
+
+export const retryPendingDocuments = inngest.createFunction(
+  {
+    id: "retry-pending-documents",
+    name: "Reintentar Documentos Pendientes",
+    retries: 2,
+  },
+  { event: "app/documents.retry.pending" },
+  async ({ step, logger, event }) => {
+    logger.info("🔄 Iniciando reintento de documentos pendientes...");
+
+    const limit = event.data?.limit || 100;
+    const bdns = event.data?.bdns; // Opcional: solo para una convocatoria específica
+
+    // Obtener documentos pendientes
+    const pendingDocs = await step.run("get-pending-documents", async () => {
+      const { getPendingDocuments } = await import("~/server/services/storage");
+      return await getPendingDocuments(limit);
+    });
+
+    if (pendingDocs.length === 0) {
+      logger.info("✅ No hay documentos pendientes para procesar");
+      return { message: "No pending documents found", processed: 0 };
+    }
+
+    // Filtrar por BDNS si se especifica
+    const filteredDocs = bdns 
+      ? pendingDocs.filter(doc => doc.convocatoria.codigoBDNS === bdns)
+      : pendingDocs;
+
+    logger.info(`📋 Encontrados ${filteredDocs.length} documentos pendientes`, {
+      totalPendientes: pendingDocs.length,
+      filtradosPorBDNS: bdns ? filteredDocs.length : null,
+      bdnsFiltro: bdns
+    });
+
+    // Crear eventos para procesar cada documento
+    const docEvents = filteredDocs.map(doc => ({
+      name: "app/document.process.storage",
+      data: {
+        bdns: doc.convocatoria.codigoBDNS,
+        docId: doc.idOficial,
+      },
+    }));
+
+    // Enviar eventos en lotes para evitar sobrecarga
+    const BATCH_SIZE = 50;
+    const batches = [];
+    for (let i = 0; i < docEvents.length; i += BATCH_SIZE) {
+      batches.push(docEvents.slice(i, i + BATCH_SIZE));
+    }
+
+    let totalEnqueued = 0;
+    for (const [index, batch] of batches.entries()) {
+      await step.sendEvent(`retry-documents-batch-${index + 1}`, batch);
+      totalEnqueued += batch.length;
+      
+      logger.info(`📤 Lote ${index + 1}/${batches.length} enviado`, {
+        documentosEnLote: batch.length,
+        totalEnviados: totalEnqueued
+      });
+    }
+
+    logger.info(`✅ Reintento de documentos completado`, {
+      documentosEncontrados: filteredDocs.length,
+      documentosEncolados: totalEnqueued,
+      lotes: batches.length,
+      filtro: bdns || 'todos'
+    });
+
+    return { 
+      processed: totalEnqueued,
+      found: filteredDocs.length,
+      batches: batches.length,
+      filter: bdns
+    };
   }
 ); 

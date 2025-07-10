@@ -1,4 +1,4 @@
-import { db } from '~/server/db';
+import { db, dbETL } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
@@ -72,13 +72,24 @@ export async function getConvocatoriaDetalle(bdns: string, jobName: string, runI
     const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias`);
     url.searchParams.append('numConv', bdns);
     url.searchParams.append('vpd', PORTAL);
+    // Parámetros adicionales para obtener datos completos
+    url.searchParams.append('includeDocumentos', 'true');      // Incluir documentos
+    url.searchParams.append('includeAnuncios', 'true');        // Incluir anuncios
+    url.searchParams.append('includeObjetivos', 'true');       // Incluir objetivos
+    url.searchParams.append('detalle', 'completo');            // Detalle completo
+    url.searchParams.append('format', 'json');                 // Formato JSON explícito
 
     const logMeta = { jobName, runId, catalogName: 'Convocatorias', bdns };
-    logger.info(`Pidiendo detalle para BDNS: ${bdns}`, logMeta);
+    logger.info(`Pidiendo detalle COMPLETO para BDNS: ${bdns}`, logMeta);
     metrics.increment('etl.items.fetched');
 
     try {
-        const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': 'application/json',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
         if (!response.ok) {
             logger.warn(`No se pudo obtener el detalle para BDNS ${bdns}`, { ...logMeta, status: response.status });
             metrics.increment('etl.items.errors');
@@ -95,15 +106,40 @@ export async function getConvocatoriaDetalle(bdns: string, jobName: string, runI
     }
 }
 
+// Helper functions para conversión de tipos
+function parseDate(dateStr: string | undefined): Date {
+    if (!dateStr) throw new Error('Fecha requerida pero no proporcionada');
+    return new Date(dateStr);
+}
+
+function parseDateOptional(dateStr: string | undefined): Date | null {
+    return dateStr ? new Date(dateStr) : null;
+}
+
+function parseBoolean(value: string | boolean | undefined): boolean | null {
+    if (value === undefined) return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        return value.toLowerCase() === 'true' || value === '1';
+    }
+    return Boolean(value);
+}
+
+function parseNumber(value: string | number | undefined): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return parseInt(value, 10);
+    throw new Error(`Valor numérico inválido: ${value}`);
+}
+
 export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobName: string, runId: string) {
     const logMeta = { jobName, runId, catalogName: 'Convocatorias', convocatoriaId: detalle.id };
     const startItem = Date.now();
     
-    const newHash = computeContentHash(detalle);
+    const newHash = computeContentHash(detalle as unknown as Record<string, unknown>);
     
     // --- PASO 1: PREPARAR DATOS (FUERA DE CUALQUIER TRANSACCIÓN) ---
     const finalidad = detalle.descripcionFinalidad ? getCachedFinalidad(detalle.descripcionFinalidad) : null;
-    const reglamento = detalle.reglamento?.autorizacion ? getCachedReglamento(detalle.reglamento.autorizacion) : null;
+    const reglamento = detalle.reglamento?.autorizacion ? getCachedReglamento(Number(detalle.reglamento.autorizacion)) : null;
     const tiposBeneficiarioIds = getCachedTiposBeneficiario((detalle.tiposBeneficiarios || []).map((t) => t.id).filter(Boolean));
     const instrumentosIds = getCachedInstrumentos((detalle.instrumentos || []).map((i) => i.id).filter(Boolean));
     const regionesIds = getCachedRegiones((detalle.regiones || []).map((r) => r.id).filter(Boolean));
@@ -122,11 +158,11 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
             presupuestoTotal: detalle.presupuestoTotal,
             urlBasesReguladoras: detalle.urlBasesReguladoras,
             sedeElectronica: detalle.sedeElectronica,
-            fechaPublicacion: new Date(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
-            fechaInicioSolicitud: detalle.fechaInicioSolicitud ? new Date(detalle.fechaInicioSolicitud) : null,
-            fechaFinSolicitud: detalle.fechaFinSolicitud ? new Date(detalle.fechaFinSolicitud) : null,
-            plazoAbierto: detalle.abierto,
-            mrr: detalle.mrr,
+            fechaPublicacion: parseDate(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
+            fechaInicioSolicitud: parseDateOptional(detalle.fechaInicioSolicitud),
+            fechaFinSolicitud: parseDateOptional(detalle.fechaFinSolicitud),
+            plazoAbierto: parseBoolean(detalle.abierto),
+            mrr: parseBoolean(detalle.mrr),
             finalidadId: finalidad?.idOficial,
             reglamentoId: reglamento?.idOficial,
             tipoConvocatoria: detalle.tipoConvocatoria,
@@ -148,11 +184,11 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
             presupuestoTotal: detalle.presupuestoTotal,
             urlBasesReguladoras: detalle.urlBasesReguladoras,
             sedeElectronica: detalle.sedeElectronica,
-            fechaPublicacion: new Date(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
-            fechaInicioSolicitud: detalle.fechaInicioSolicitud ? new Date(detalle.fechaInicioSolicitud) : null,
-            fechaFinSolicitud: detalle.fechaFinSolicitud ? new Date(detalle.fechaFinSolicitud) : null,
-            plazoAbierto: detalle.abierto,
-            mrr: detalle.mrr,
+            fechaPublicacion: parseDate(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
+            fechaInicioSolicitud: parseDateOptional(detalle.fechaInicioSolicitud),
+            fechaFinSolicitud: parseDateOptional(detalle.fechaFinSolicitud),
+            plazoAbierto: parseBoolean(detalle.abierto),
+            mrr: parseBoolean(detalle.mrr),
             finalidadId: finalidad?.idOficial,
             reglamentoId: reglamento?.idOficial,
             tipoConvocatoria: detalle.tipoConvocatoria,
@@ -173,7 +209,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     const syncTasks: Promise<unknown>[] = [];
     const syncTaskNames: string[] = [];
 
-    if (detalle.documentos?.length > 0) {
+    if (detalle.documentos && detalle.documentos.length > 0) {
         syncTaskNames.push('documentos');
         syncTasks.push(db.$transaction([
             db.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
@@ -192,13 +228,13 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
         ]));
     }
     
-    if (detalle.anuncios?.length > 0) {
+    if (detalle.anuncios && detalle.anuncios.length > 0) {
         syncTaskNames.push('anuncios');
         syncTasks.push(db.$transaction([
             db.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             db.anuncio.createMany({
                 data: detalle.anuncios.map((an) => ({
-                    numAnuncio: an.numAnuncio,
+                    numAnuncio: parseNumber(an.numAnuncio),
                     titulo: an.titulo,
                     tituloLeng: an.tituloLeng,
                     texto: an.texto,
@@ -213,7 +249,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
         ]));
     }
 
-    if (detalle.objetivos?.length > 0) {
+    if (detalle.objetivos && detalle.objetivos.length > 0) {
         syncTaskNames.push('objetivos');
         syncTasks.push(db.$transaction([
             db.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
@@ -245,6 +281,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
         throw error;
     }
 
+    // Actualizar hash y fecha de sincronización
     await db.convocatoria.update({
         where: { id: convocatoria.id },
         data: {
@@ -266,7 +303,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
 }
 
 export function hasConvocatoriaChanged(detalle: ConvocatoriaDetalle): boolean {
-    const newHash = computeContentHash(detalle);
+    const newHash = computeContentHash(detalle as unknown as Record<string, unknown>);
     const oldHash = existingConvocatoriasCache.get(Number(detalle.id)) || '';
     return oldHash !== newHash;
 }
@@ -286,7 +323,7 @@ export function updateConvocatoriaCache(detalle: ConvocatoriaDetalle, processedH
 export function getConvocatoriaStatus(detalle: ConvocatoriaDetalle) {
     const exists = existingConvocatoriasCache.has(Number(detalle.id));
     const storedHash = existingConvocatoriasCache.get(Number(detalle.id)) || '';
-    const currentHash = computeContentHash(detalle);
+    const currentHash = computeContentHash(detalle as unknown as Record<string, unknown>);
     const hasChanged = storedHash !== currentHash;
     
     let skipReason: string | undefined;
@@ -303,21 +340,55 @@ export function getConvocatoriaStatus(detalle: ConvocatoriaDetalle) {
     };
 }
 
-export async function getConvocatoriasPage(page: number, pageSize: number, jobName: string, runId: string) {
+export async function getConvocatoriasPage(page: number, pageSize: number, jobName: string, runId: string, modo: 'initial' | 'incremental' = 'initial') {
     const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias/busqueda`);
     url.searchParams.append("vpd", PORTAL);
     url.searchParams.append("page", String(page));
     url.searchParams.append("pageSize", String(pageSize));
-    url.searchParams.append("order", "fechaRecepcion");
+    url.searchParams.append("order", "fechaPublicacion");       // Mejor orden para carga inicial
     url.searchParams.append("direccion", "desc");
-    url.searchParams.append("fechaDesde", "01/06/2025");
+    
+    // Configurar fechas según el modo
+    if (modo === 'initial') {
+        // Para carga inicial: obtener convocatorias desde hace 3 años
+        const fechaDesde = new Date();
+        fechaDesde.setFullYear(fechaDesde.getFullYear() - 3);
+        const fechaDesdeStr = fechaDesde.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        url.searchParams.append("fechaDesde", fechaDesdeStr);
+        
+        // Sin fechaHasta para obtener hasta hoy
+        logger.info(`Modo inicial: obteniendo convocatorias desde ${fechaDesdeStr}`, { jobName, runId });
+    } else {
+        // Para modo incremental: últimos 30 días
+        const fechaDesde = new Date();
+        fechaDesde.setDate(fechaDesde.getDate() - 30);
+        const fechaDesdeStr = fechaDesde.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        url.searchParams.append("fechaDesde", fechaDesdeStr);
+        
+        const hoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        url.searchParams.append("fechaHasta", hoy);
+        
+        logger.info(`Modo incremental: obteniendo convocatorias desde ${fechaDesdeStr} hasta ${hoy}`, { jobName, runId });
+    }
+    
+    // Parámetros adicionales para obtener más datos
+    url.searchParams.append("estado", "todas");                 // Todas las convocatorias (abiertas, cerradas, etc.)
+    url.searchParams.append("includeInactivas", "true");        // Incluir convocatorias inactivas
+    url.searchParams.append("format", "json");                  // Formato JSON explícito
+    url.searchParams.append("detalleMinimo", "false");          // Obtener detalle básico en listado
 
-    const logMeta = { jobName, runId, catalogName: 'Convocatorias', page, pageSize, fechaDesde: "01/06/2025" };
-    logger.info(`Pidiendo página ${page} de convocatorias (desde 01/06/2025)...`, logMeta);
+    const fechaConfig = modo === 'initial' ? 'últimos 3 años' : 'últimos 30 días';
+    const logMeta = { jobName, runId, catalogName: 'Convocatorias', page, pageSize, modo, fechaConfig };
+    logger.info(`Pidiendo página ${page} de convocatorias (${fechaConfig})...`, logMeta);
     metrics.increment('etl.pages.fetched');
 
     try {
-        const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': 'application/json',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
         if (!response.ok) {
             logger.warn(`Fallo fetching página ${page} de convocatorias`, { ...logMeta, status: response.status });
             metrics.increment('etl.pages.failed');
@@ -334,5 +405,166 @@ export async function getConvocatoriasPage(page: number, pageSize: number, jobNa
         logger.error(`Excepción de red al obtener página ${page} de convocatorias`, error as Error, logMeta);
         metrics.increment('etl.pages.failed');
         throw error;
+    }
+} 
+
+/**
+ * Obtiene las últimas convocatorias publicadas - más eficiente para sincronización incremental
+ */
+export async function getConvocatoriasUltimas(limit: number, jobName: string, runId: string) {
+    const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias/ultimas`);
+    url.searchParams.append("vpd", PORTAL);
+    url.searchParams.append("limit", String(limit));
+    url.searchParams.append("format", "json");
+    url.searchParams.append("includeInactivas", "true");
+
+    const logMeta = { jobName, runId, catalogName: 'ConvocatoriasUltimas', limit };
+    logger.info(`Pidiendo ${limit} convocatorias más recientes...`, logMeta);
+    metrics.increment('etl.items.fetched');
+
+    try {
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': 'application/json',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
+        if (!response.ok) {
+            logger.warn(`No se pudieron obtener las últimas convocatorias`, { ...logMeta, status: response.status });
+            metrics.increment('etl.items.errors');
+            return null;
+        }
+        
+        const data = await response.json();
+        logger.info(`Últimas convocatorias recibidas`, { ...logMeta, count: data.length || 0 });
+        
+        return data;
+
+    } catch (error: unknown) {
+        logger.error(`Excepción de red al obtener últimas convocatorias`, error as Error, logMeta);
+        metrics.increment('etl.items.errors');
+        return null;
+    }
+}
+
+/**
+ * Obtiene documentos de una convocatoria específica - más eficiente que extraer del detalle
+ */
+export async function getConvocatoriaDocumentos(bdns: string, jobName: string, runId: string) {
+    const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias/documentos`);
+    url.searchParams.append("numConv", bdns);
+    url.searchParams.append("vpd", PORTAL);
+    url.searchParams.append("format", "json");
+    url.searchParams.append("includeMetadata", "true");
+
+    const logMeta = { jobName, runId, catalogName: 'ConvocatoriaDocumentos', bdns };
+    logger.info(`Pidiendo documentos para BDNS: ${bdns}`, logMeta);
+    metrics.increment('etl.items.fetched');
+
+    try {
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': 'application/json',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
+        if (!response.ok) {
+            logger.warn(`No se pudieron obtener los documentos para BDNS ${bdns}`, { ...logMeta, status: response.status });
+            metrics.increment('etl.items.errors');
+            return null;
+        }
+        
+        const data = await response.json();
+        logger.info(`Documentos de convocatoria recibidos`, { ...logMeta, count: data.length || 0 });
+        
+        return data;
+
+    } catch (error: unknown) {
+        logger.error(`Excepción de red al obtener documentos para BDNS ${bdns}`, error as Error, logMeta);
+        metrics.increment('etl.items.errors');
+        return null;
+    }
+}
+
+/**
+ * Obtiene PDF de convocatoria usando endpoint específico - alternativa a descarga directa
+ */
+export async function getConvocatoriaPDF(bdns: string, tipoDoc: string, jobName: string, runId: string) {
+    const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias/pdf`);
+    url.searchParams.append("numConv", bdns);
+    url.searchParams.append("vpd", PORTAL);
+    url.searchParams.append("tipoDoc", tipoDoc);  // 'bases', 'anuncio', 'resolucion', etc.
+
+    const logMeta = { jobName, runId, catalogName: 'ConvocatoriaPDF', bdns, tipoDoc };
+    logger.info(`Pidiendo PDF ${tipoDoc} para BDNS: ${bdns}`, logMeta);
+    metrics.increment('etl.items.fetched');
+
+    try {
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': 'application/pdf',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
+        if (!response.ok) {
+            logger.warn(`No se pudo obtener el PDF ${tipoDoc} para BDNS ${bdns}`, { ...logMeta, status: response.status });
+            metrics.increment('etl.items.errors');
+            return null;
+        }
+        
+        const pdfBuffer = await response.arrayBuffer();
+        logger.info(`PDF de convocatoria recibido`, { ...logMeta, sizeBytes: pdfBuffer.byteLength });
+        
+        return Buffer.from(pdfBuffer);
+
+    } catch (error: unknown) {
+        logger.error(`Excepción de red al obtener PDF para BDNS ${bdns}`, error as Error, logMeta);
+        metrics.increment('etl.items.errors');
+        return null;
+    }
+}
+
+/**
+ * Exporta convocatorias usando endpoint de exportación - útil para respaldos
+ */
+export async function exportConvocatorias(formato: 'csv' | 'xlsx' | 'json', filtros: Record<string, string>, jobName: string, runId: string) {
+    const url = new URL(`${SNPSAP_API_BASE_URL}/convocatorias/exportar`);
+    url.searchParams.append("vpd", PORTAL);
+    url.searchParams.append("formato", formato);
+    
+    // Agregar filtros dinámicamente
+    Object.entries(filtros).forEach(([key, value]) => {
+        url.searchParams.append(key, value);
+    });
+
+    const logMeta = { jobName, runId, catalogName: 'ConvocatoriasExport', formato, filtros };
+    logger.info(`Exportando convocatorias en formato ${formato}...`, logMeta);
+    metrics.increment('etl.items.fetched');
+
+    try {
+        const response = await fetch(url.toString(), { 
+            headers: { 
+                'Accept': formato === 'json' ? 'application/json' : 'application/octet-stream',
+                'User-Agent': 'Zetika-ETL/1.0'
+            } 
+        });
+        if (!response.ok) {
+            logger.warn(`No se pudo exportar las convocatorias`, { ...logMeta, status: response.status });
+            metrics.increment('etl.items.errors');
+            return null;
+        }
+        
+        const data = formato === 'json' ? await response.json() : await response.arrayBuffer();
+        logger.info(`Convocatorias exportadas exitosamente`, { 
+            ...logMeta, 
+            size: formato === 'json' ? (data as any[]).length : (data as ArrayBuffer).byteLength 
+        });
+        
+        return data;
+
+    } catch (error: unknown) {
+        logger.error(`Excepción de red al exportar convocatorias`, error as Error, logMeta);
+        metrics.increment('etl.items.errors');
+        return null;
     }
 } 
