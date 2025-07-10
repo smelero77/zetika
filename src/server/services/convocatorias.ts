@@ -345,8 +345,9 @@ export async function getConvocatoriasPage(page: number, pageSize: number, jobNa
     url.searchParams.append("vpd", PORTAL);
     url.searchParams.append("page", String(page));
     url.searchParams.append("pageSize", String(pageSize));
-    url.searchParams.append("order", "fechaPublicacion");       // Mejor orden para carga inicial
-    url.searchParams.append("direccion", "desc");
+    // ELIMINADOS: Los parámetros order y direccion causan error 400 en la API
+    // url.searchParams.append("order", "fechaPublicacion");
+    // url.searchParams.append("direccion", "desc");
     
     // Configurar fechas según el modo
     if (modo === 'initial') {
@@ -371,11 +372,11 @@ export async function getConvocatoriasPage(page: number, pageSize: number, jobNa
         logger.info(`Modo incremental: obteniendo convocatorias desde ${fechaDesdeStr} hasta ${hoy}`, { jobName, runId });
     }
     
-    // Parámetros adicionales para obtener más datos
-    url.searchParams.append("estado", "todas");                 // Todas las convocatorias (abiertas, cerradas, etc.)
-    url.searchParams.append("includeInactivas", "true");        // Incluir convocatorias inactivas
-    url.searchParams.append("format", "json");                  // Formato JSON explícito
-    url.searchParams.append("detalleMinimo", "false");          // Obtener detalle básico en listado
+    // ELIMINADOS: Parámetros adicionales que pueden causar error 400
+    // url.searchParams.append("estado", "todas");
+    // url.searchParams.append("includeInactivas", "true");
+    // url.searchParams.append("format", "json");
+    // url.searchParams.append("detalleMinimo", "false");
 
     const fechaConfig = modo === 'initial' ? 'últimos 3 años' : 'últimos 30 días';
     const logMeta = { jobName, runId, catalogName: 'Convocatorias', page, pageSize, modo, fechaConfig };
