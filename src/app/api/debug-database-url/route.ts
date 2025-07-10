@@ -11,53 +11,79 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    // Parsear la URL para identificar problemas
-    let urlAnalysis;
+    // Análisis detallado de la URL
+    const urlLength = databaseUrl.length;
+    const hasWhitespace = /\s/.test(databaseUrl);
+    const startsCorrectly = databaseUrl.startsWith('postgres://');
+    
+    // Intentar parsear la URL
+    let parseResult;
     try {
       const url = new URL(databaseUrl);
       
-      // Ocultar la contraseña por seguridad, pero mostrar su estructura
-      const password = url.password || '';
-      const maskedPassword = password.length > 0 
-        ? `${password.substring(0, 2)}***${password.substring(password.length - 2)}`
-        : 'NO_PASSWORD';
-
-      urlAnalysis = {
+      parseResult = {
+        success: true,
         protocol: url.protocol,
         username: url.username,
-        password: maskedPassword,
-        passwordLength: password.length,
-        hasSpecialChars: /[^a-zA-Z0-9]/.test(password),
-        specialCharsFound: password.match(/[^a-zA-Z0-9]/g) || [],
+        // Mostrar solo los primeros y últimos 3 caracteres de la contraseña
+        password: url.password ? `${url.password.substring(0, 3)}***${url.password.substring(url.password.length - 3)}` : 'NO_PASSWORD',
         hostname: url.hostname,
         port: url.port,
         pathname: url.pathname,
-        search: url.search,
-        fullUrl: databaseUrl.replace(password, maskedPassword)
+        search: url.search
       };
     } catch (parseError) {
-      urlAnalysis = {
-        parseError: parseError instanceof Error ? parseError.message : 'Error parsing URL',
-        rawUrl: databaseUrl.substring(0, 50) + '...' // Solo mostrar el inicio
+      parseResult = {
+        success: false,
+        error: parseError instanceof Error ? parseError.message : 'Unknown parse error'
       };
     }
 
-    // Verificar caracteres problemáticos comunes
-    const problematicChars = ['@', '#', '%', '&', '+', '=', '?', ' '];
-    const foundProblematic = problematicChars.filter(char => 
-      databaseUrl.includes(char) && !databaseUrl.startsWith(`postgres://`) && !databaseUrl.includes(`@${databaseUrl.split('@')[1]}`)
+    // Verificaciones específicas
+    const checks = {
+      hasCorrectProtocol: startsCorrectly,
+      hasWhitespace: hasWhitespace,
+      urlLength: urlLength,
+      isEmpty: urlLength === 0,
+      hasAtSymbol: databaseUrl.includes('@'),
+      hasColon: databaseUrl.includes(':'),
+      hasSlashes: databaseUrl.includes('//'),
+      
+      // Verificación específica para transaction mode
+      isTransactionMode: databaseUrl.includes('pooler.supabase.com:6543'),
+      isDirectConnection: databaseUrl.includes('.supabase.co:5432'),
+      
+      // Buscar caracteres problemáticos
+      hasInvalidChars: /[^\w\-\.@:\/\?&=]/.test(databaseUrl)
+    };
+
+    // Mostrar la URL con caracteres problemáticos resaltados (sin mostrar la contraseña completa)
+    const maskedUrl = databaseUrl.replace(
+      /(postgres:\/\/[^:]+:)([^@]+)(@.+)/,
+      (match, prefix, password, suffix) => {
+        const maskedPassword = password.length > 6 
+          ? `${password.substring(0, 3)}***${password.substring(password.length - 3)}`
+          : '***';
+        return `${prefix}${maskedPassword}${suffix}`;
+      }
     );
 
     return NextResponse.json({
       success: true,
-      analysis: urlAnalysis,
-      recommendations: {
-        hasProblematicChars: foundProblematic.length > 0,
-        foundChars: foundProblematic,
-        needsUrlEncoding: foundProblematic.length > 0,
-        suggestion: foundProblematic.length > 0 
-          ? 'La contraseña contiene caracteres especiales que necesitan ser URL-encoded'
-          : 'La URL parece tener formato correcto'
+      analysis: {
+        urlLength,
+        maskedUrl,
+        parseResult,
+        checks,
+        recommendations: [
+          !checks.hasCorrectProtocol && 'URL debe empezar con "postgres://"',
+          checks.hasWhitespace && 'URL contiene espacios en blanco - elimínalos',
+          checks.isEmpty && 'URL está vacía',
+          !checks.hasAtSymbol && 'URL debe contener @ para separar credenciales del host',
+          !checks.isTransactionMode && !checks.isDirectConnection && 'URL no parece ser de Supabase',
+          checks.isDirectConnection && 'Estás usando conexión directa (5432) - cambia a transaction mode (6543)',
+          checks.hasInvalidChars && 'URL contiene caracteres no válidos'
+        ].filter(Boolean)
       },
       timestamp: new Date().toISOString()
     });

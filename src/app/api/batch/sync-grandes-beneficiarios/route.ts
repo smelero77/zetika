@@ -5,7 +5,39 @@ import { logger, batchLogger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
 
-
+/**
+ * Función helper para hacer upsert con retry para errores de prepared statements
+ */
+async function upsertWithRetry(model: any, params: any, maxRetries = 3): Promise<any> {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.upsert(params);
+    } catch (error: any) {
+      lastError = error;
+      
+      // Verificar si es el error específico de prepared statements
+      if (error.message?.includes('prepared statement') && error.message?.includes('does not exist')) {
+        logger.warn(`Prepared statement error, intento ${attempt}/${maxRetries}`, { 
+          error: error.message,
+          attempt 
+        });
+        
+        // Esperar un poco antes del siguiente intento
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+          continue;
+        }
+      }
+      
+      // Si no es el error de prepared statements o se agotaron los intentos, relanzar
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
 
 /**
  * Sincroniza los Grandes Beneficiarios.
@@ -75,13 +107,13 @@ async function syncGrandesBeneficiarios(jobName: string, runId: string) {
               const nifCif = nifMatch ? nifMatch[1] : null;
               const nombre = nifCif ? item.beneficiario.substring(nifCif.length).trim() : item.beneficiario;
   
-              await db.beneficiario.upsert({
+              await upsertWithRetry(db.beneficiario, {
                 where: { idOficial: item.idPersona },
                 update: { nombre, nifCif },
                 create: { idOficial: item.idPersona, nombre, nifCif },
               });
               
-              await db.granBeneficiario.upsert({
+              await upsertWithRetry(db.granBeneficiario, {
                 where: { beneficiarioId_ejercicio: { beneficiarioId: item.idPersona, ejercicio: item.ejercicio } },
                 update: { ayudaTotal: item.ayudaETotal },
                 create: {

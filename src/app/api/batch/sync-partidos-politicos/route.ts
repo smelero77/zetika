@@ -8,6 +8,40 @@ import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
 const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
 const PAGE_SIZE = 200;
 
+/**
+ * Función helper para hacer upsert con retry para errores de prepared statements
+ */
+async function upsertWithRetry(model: any, params: any, maxRetries = 3): Promise<any> {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.upsert(params);
+    } catch (error: any) {
+      lastError = error;
+      
+      // Verificar si es el error específico de prepared statements
+      if (error.message?.includes('prepared statement') && error.message?.includes('does not exist')) {
+        logger.warn(`Prepared statement error, intento ${attempt}/${maxRetries}`, { 
+          error: error.message,
+          attempt 
+        });
+        
+        // Esperar un poco antes del siguiente intento
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+          continue;
+        }
+      }
+      
+      // Si no es el error de prepared statements o se agotaron los intentos, relanzar
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
+
 async function syncPartidosPoliticos(jobName: string, runId: string) {
   const logMeta = { jobName, runId, catalogName: 'ConcesionesPartidosPoliticos' };
   logger.info('Iniciando sincronización de Concesiones a Partidos Políticos', logMeta);
@@ -74,7 +108,7 @@ async function syncPartidosPoliticos(jobName: string, runId: string) {
           continue;
         }
 
-        await db.concesionPartidoPolitico.upsert({
+        await upsertWithRetry(db.concesionPartidoPolitico, {
           where: { idOficial: item.id },
           update: {
             importe: item.importe,
