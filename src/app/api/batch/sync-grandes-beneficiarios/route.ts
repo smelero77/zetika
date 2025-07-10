@@ -18,7 +18,7 @@ async function upsertWithRetry(model: any, params: any, maxRetries = 3): Promise
       lastError = error;
       
       // Verificar si es el error específico de prepared statements
-      if (error.message?.includes('prepared statement') && error.message?.includes('does not exist')) {
+      if (error.message?.includes('prepared statement') && (error.message?.includes('does not exist') || error.message?.includes('already exists'))) {
         logger.warn(`Prepared statement error, intento ${attempt}/${maxRetries}`, { 
           error: error.message,
           attempt 
