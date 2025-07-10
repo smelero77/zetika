@@ -393,10 +393,35 @@ export async function getConvocatoriasPage(page: number, pageSize: number, jobNa
         if (!response.ok) {
             logger.warn(`Fallo fetching página ${page} de convocatorias`, { ...logMeta, status: response.status });
             metrics.increment('etl.pages.failed');
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Retornar estructura vacía válida en lugar de lanzar error
+            return { 
+                content: [], 
+                last: true, 
+                totalElements: 0, 
+                totalPages: 0, 
+                number: page 
+            };
         }
         
         const data = await response.json();
+        
+        // Validación defensiva: asegurar que data tiene la estructura esperada
+        if (!data || typeof data !== 'object') {
+            logger.warn(`Respuesta inválida de la API para página ${page}`, { ...logMeta, receivedData: data });
+            return { 
+                content: [], 
+                last: true, 
+                totalElements: 0, 
+                totalPages: 0, 
+                number: page 
+            };
+        }
+        
+        // Asegurar que content sea un array
+        if (!Array.isArray(data.content)) {
+            data.content = [];
+        }
+        
         logger.info(`Página ${page} de convocatorias recibida`, { ...logMeta, count: data.content?.length || 0 });
         metrics.gauge('etl.pages.item_count', data.content?.length || 0);
         
@@ -405,7 +430,14 @@ export async function getConvocatoriasPage(page: number, pageSize: number, jobNa
     } catch (error: unknown) {
         logger.error(`Excepción de red al obtener página ${page} de convocatorias`, error as Error, logMeta);
         metrics.increment('etl.pages.failed');
-        throw error;
+        // Retornar estructura vacía válida en lugar de lanzar error
+        return { 
+            content: [], 
+            last: true, 
+            totalElements: 0, 
+            totalPages: 0, 
+            number: page 
+        };
     }
 } 
 

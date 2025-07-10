@@ -20,8 +20,11 @@ interface ConvocatoriaListItem {
 const PAGE_SIZE = 200;
 
 function chunk<T>(array: T[], size: number): T[][] {
-  if (!array.length) {
+  if (!array || !Array.isArray(array) || array.length === 0) {
     return [];
+  }
+  if (size <= 0) {
+    return [array];
   }
   const head = array.slice(0, size);
   const tail = array.slice(size);
@@ -53,7 +56,14 @@ export const createConvocatoriaJobs = inngest.createFunction(
         return await getConvocatoriasPage(currentPage, PAGE_SIZE, 'inngest-create-jobs', event.id || 'unknown', modo);
       });
 
-      const items = data.content || [];
+      // Validación defensiva: asegurar que data existe y tiene la estructura esperada
+      if (!data || typeof data !== 'object') {
+        logger.warn(`Datos inválidos recibidos para página ${currentPage}`, { data });
+        isLastPage = true;
+        break;
+      }
+
+      const items = Array.isArray(data.content) ? data.content : [];
       for (const _item of items) {
         const item = _item as { numeroConvocatoria?: string; id?: string; descripcion?: string };
         if (!item || !item.numeroConvocatoria || !item.id) continue;
@@ -77,6 +87,12 @@ export const createConvocatoriaJobs = inngest.createFunction(
       }
       isLastPage = data.last ?? true;
       currentPage++;
+      
+      // Protección contra bucles infinitos
+      if (currentPage > 1000) {
+        logger.warn("Deteniendo bucle de páginas por seguridad", { currentPage });
+        break;
+      }
     }
 
     if (allItemsToProcess.length === 0) {
@@ -121,7 +137,20 @@ export const processConvocatoriaBatch = inngest.createFunction(
   },
   { event: "app/convocatoria.process.batch" },
   async ({ event, step, logger }) => {
+    // Validación defensiva de los datos del evento
+    if (!event.data || !event.data.convocatorias) {
+      logger.error("Datos del evento inválidos", { eventData: event.data });
+      throw new Error("Evento sin datos de convocatorias válidos");
+    }
+
     const { convocatorias, batch_index, total_batches } = event.data;
+    
+    // Asegurar que convocatorias es un array
+    if (!Array.isArray(convocatorias)) {
+      logger.error("convocatorias no es un array", { convocatorias, type: typeof convocatorias });
+      throw new Error("convocatorias debe ser un array");
+    }
+
     logger.info(`📦 Procesando lote ${batch_index}/${total_batches} (${convocatorias.length} convocatorias)`);
     
     const allDocEvents: Array<{
@@ -135,6 +164,12 @@ export const processConvocatoriaBatch = inngest.createFunction(
     let totalDocumentosEncontrados = 0;
     
     for (const convo of convocatorias) {
+      // Validación de cada convocatoria
+      if (!convo || !convo.bdns) {
+        logger.warn("Convocatoria inválida encontrada", { convo });
+        continue;
+      }
+
       const result = await step.run(`process-item-${convo.bdns}`, async () => {
         if (!convo.bdns) {
           throw new Error(`BDNS no válido para convocatoria: ${convo.titulo}`);
@@ -146,15 +181,18 @@ export const processConvocatoriaBatch = inngest.createFunction(
         const { hash, documentos } = await processAndSaveDetalle(detalle, 'inngest-batch', event.id || 'unknown');
         updateConvocatoriaCache(detalle, hash);
         
+        // Asegurar que documentos es un array
+        const docArray = Array.isArray(documentos) ? documentos : [];
+        
         // Log información de documentos encontrados
-        if (documentos.length > 0) {
-          logger.info(`📄 Convocatoria ${convo.bdns} tiene ${documentos.length} documentos para descargar`);
+        if (docArray.length > 0) {
+          logger.info(`📄 Convocatoria ${convo.bdns} tiene ${docArray.length} documentos para descargar`);
         }
         
-        return { documentos, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
+        return { documentos: docArray, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
       });
       
-      if (result && result.documentos.length > 0) {
+      if (result && Array.isArray(result.documentos) && result.documentos.length > 0) {
         totalDocumentosEncontrados += result.documentos.length;
         const docEvents = result.documentos.map((doc: { id: number }) => ({
           name: "app/document.process.storage",
