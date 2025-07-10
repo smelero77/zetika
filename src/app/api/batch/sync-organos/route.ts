@@ -43,13 +43,14 @@ async function upsertWithRetry(model: any, params: any, maxRetries = 3): Promise
 
 /**
  * Sincroniza el catálogo de Órganos, que es jerárquico y requiere una llamada por tipo de administración.
+ * @param tipoAdminFilter - Si se especifica, solo procesa ese tipo de administración
  */
-async function syncOrganos(jobName: string, runId: string) {
+async function syncOrganos(jobName: string, runId: string, tipoAdminFilter?: string | null) {
   const catalogName = 'Organos';
   const endpoint = '/organos';
-  const tiposAdmin: Array<'C' | 'A' | 'L' | 'O'> = ['C', 'A', 'L', 'O'];
-  const logMeta = { jobName, runId, catalogName, endpoint };
-  logger.info(`Iniciando sincronización: ${catalogName}`, logMeta);
+  const tiposAdmin: Array<'C' | 'A' | 'L' | 'O'> = tipoAdminFilter ? [tipoAdminFilter as 'C' | 'A' | 'L' | 'O'] : ['C', 'A', 'L', 'O'];
+  const logMeta = { jobName, runId, catalogName, endpoint, tipoAdminFilter };
+  logger.info(`Iniciando sincronización: ${catalogName}${tipoAdminFilter ? ` (solo tipo ${tipoAdminFilter})` : ''}`, logMeta);
   metrics.increment('etl.jobs.started');
 
   let processed = 0;
@@ -151,14 +152,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Obtener parámetros del body o query string
+  const url = new URL(req.url);
+  const tipoAdmin = url.searchParams.get('tipoAdmin');
+  
+  let bodyParams = {};
+  try {
+    const body = await req.text();
+    if (body) {
+      bodyParams = JSON.parse(body);
+    }
+  } catch (e) {
+    // Body vacío o no JSON, usar valores por defecto
+  }
+  
+  const tipoAdminFilter = tipoAdmin || (bodyParams as any).tipoAdmin || undefined;
+
   const jobName = 'sync-organos';
   const runId = crypto.randomUUID();
   metrics.increment('etl.jobs.invoked');
   const startTime = Date.now();
-  logger.info('Job Órganos Invocado', { jobName, runId });
+  logger.info('Job Órganos Invocado', { jobName, runId, tipoAdminFilter });
 
   try {
-    const stats = await syncOrganos(jobName, runId);
+    const stats = await syncOrganos(jobName, runId, tipoAdminFilter ? tipoAdminFilter : undefined);
 
     const durationMs = Date.now() - startTime;
     metrics.histogram('etl.jobs.total_duration_ms', durationMs);

@@ -476,25 +476,33 @@ export const syncSanciones = inngest.createFunction(
 
 /**
  * FUNCIÓN 11: Sincronización de Órganos
- * Sincroniza los órganos usando el endpoint batch existente
- * NOTA: Incluye timeout extendido debido a la naturaleza jerárquica y recursiva del procesamiento
+ * Sincroniza los órganos dividiendo el trabajo en steps por tipo de administración
+ * OPTIMIZADO: Para plan gratuito de Vercel (60 segundos máximo por step)
  */
 export const syncOrganos = inngest.createFunction(
   {
     id: "sync-organos",
     name: "Sincronizar Órganos",
     retries: 3,
-    // Extender timeout a 15 minutos debido a la naturaleza jerárquica y recursiva del procesamiento
-    timeouts: {
-      start: "15m",
-    },
+    // Sin timeout extendido - cada step debe completarse en < 60 segundos
   },
   { event: "app/organos.sync.requested" },
   async ({ step, logger }) => {
-    logger.info("🔄 Iniciando sincronización de órganos...");
+    logger.info("🔄 Iniciando sincronización de órganos (dividida en steps)...");
+
+    const tiposAdmin = [
+      { codigo: 'C', nombre: 'Central' },
+      { codigo: 'A', nombre: 'Autonómica' },
+      { codigo: 'L', nombre: 'Local' },
+      { codigo: 'O', nombre: 'Otros' }
+    ];
+
+    const resultados = [];
 
     try {
-      const response = await step.run("call-organos-api", async () => {
+      // Step 1: Procesar Administración Central
+      const resultadoCentral = await step.run("sync-organos-central", async () => {
+        logger.info("🏛️ Procesando Administración Central...");
         const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-organos`;
         const response = await fetch(url, {
           method: 'POST',
@@ -502,17 +510,104 @@ export const syncOrganos = inngest.createFunction(
             'Authorization': `Bearer ${process.env.CRON_SECRET}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ tipoAdmin: 'C' }),
         });
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        return await response.json();
+        const resultado = await response.json();
+        logger.info("✅ Administración Central completada", { processed: resultado.stats?.processed });
+        return resultado;
+      });
+      resultados.push({ tipo: 'Central', ...resultadoCentral });
+
+      // Step 2: Procesar Administración Autonómica
+      const resultadoAutonomica = await step.run("sync-organos-autonomica", async () => {
+        logger.info("🏛️ Procesando Administración Autonómica...");
+        const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-organos`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tipoAdmin: 'A' }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const resultado = await response.json();
+        logger.info("✅ Administración Autonómica completada", { processed: resultado.stats?.processed });
+        return resultado;
+      });
+      resultados.push({ tipo: 'Autonómica', ...resultadoAutonomica });
+
+      // Step 3: Procesar Administración Local
+      const resultadoLocal = await step.run("sync-organos-local", async () => {
+        logger.info("🏛️ Procesando Administración Local...");
+        const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-organos`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tipoAdmin: 'L' }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const resultado = await response.json();
+        logger.info("✅ Administración Local completada", { processed: resultado.stats?.processed });
+        return resultado;
+      });
+      resultados.push({ tipo: 'Local', ...resultadoLocal });
+
+      // Step 4: Procesar Otros Órganos
+      const resultadoOtros = await step.run("sync-organos-otros", async () => {
+        logger.info("🏛️ Procesando Otros Órganos...");
+        const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-organos`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tipoAdmin: 'O' }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const resultado = await response.json();
+        logger.info("✅ Otros Órganos completados", { processed: resultado.stats?.processed });
+        return resultado;
+      });
+      resultados.push({ tipo: 'Otros', ...resultadoOtros });
+
+      // Calcular totales
+      const totalProcessed = resultados.reduce((total, resultado) => total + (resultado.stats?.processed || 0), 0);
+      const totalErrors = resultados.reduce((total, resultado) => total + (resultado.stats?.errors || 0), 0);
+
+      logger.info("✅ Sincronización de órganos completada (todos los tipos)", { 
+        totalProcessed, 
+        totalErrors,
+        detalles: resultados.map(r => ({ tipo: r.tipo, processed: r.stats?.processed || 0, errors: r.stats?.errors || 0 }))
       });
 
-      logger.info("✅ Sincronización de órganos completada", response);
-      return response;
+      return { 
+        success: true, 
+        totalProcessed, 
+        totalErrors,
+        resultados: resultados.map(r => ({ tipo: r.tipo, stats: r.stats }))
+      };
     } catch (error) {
       logger.error("❌ Error en sincronización de órganos", error);
       throw error;
