@@ -303,6 +303,10 @@ export const syncAyudasDeEstado = inngest.createFunction(
     id: "sync-ayudas-estado",
     name: "Sincronizar Ayudas de Estado",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado
+    timeouts: {
+      start: "10m",
+    },
   },
   { event: "app/ayudas-estado.sync.requested" },
   async ({ step, logger }) => {
@@ -344,6 +348,10 @@ export const syncPartidosPoliticos = inngest.createFunction(
     id: "sync-partidos-politicos",
     name: "Sincronizar Partidos Políticos",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado
+    timeouts: {
+      start: "10m",
+    },
   },
   { event: "app/partidos-politicos.sync.requested" },
   async ({ step, logger }) => {
@@ -385,6 +393,10 @@ export const syncConcesiones = inngest.createFunction(
     id: "sync-concesiones",
     name: "Sincronizar Concesiones",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado y verificaciones de dependencias
+    timeouts: {
+      start: "15m",
+    },
   },
   { event: "app/concesiones.sync.requested" },
   async ({ step, logger }) => {
@@ -426,6 +438,10 @@ export const syncSanciones = inngest.createFunction(
     id: "sync-sanciones",
     name: "Sincronizar Sanciones",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado
+    timeouts: {
+      start: "10m",
+    },
   },
   { event: "app/sanciones.sync.requested" },
   async ({ step, logger }) => {
@@ -461,12 +477,17 @@ export const syncSanciones = inngest.createFunction(
 /**
  * FUNCIÓN 11: Sincronización de Órganos
  * Sincroniza los órganos usando el endpoint batch existente
+ * NOTA: Incluye timeout extendido debido a la naturaleza jerárquica y recursiva del procesamiento
  */
 export const syncOrganos = inngest.createFunction(
   {
     id: "sync-organos",
     name: "Sincronizar Órganos",
     retries: 3,
+    // Extender timeout a 15 minutos debido a la naturaleza jerárquica y recursiva del procesamiento
+    timeouts: {
+      start: "15m",
+    },
   },
   { event: "app/organos.sync.requested" },
   async ({ step, logger }) => {
@@ -508,6 +529,10 @@ export const syncMinimis = inngest.createFunction(
     id: "sync-minimis",
     name: "Sincronizar Minimis",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado y verificaciones de dependencias
+    timeouts: {
+      start: "15m",
+    },
   },
   { event: "app/minimis.sync.requested" },
   async ({ step, logger }) => {
@@ -549,6 +574,10 @@ export const syncPlanesEstrategicos = inngest.createFunction(
     id: "sync-planes-estrategicos",
     name: "Sincronizar Planes Estratégicos",
     retries: 3,
+    // Timeout extendido debido al procesamiento paginado
+    timeouts: {
+      start: "10m",
+    },
   },
   { event: "app/planes-estrategicos.sync.requested" },
   async ({ step, logger }) => {

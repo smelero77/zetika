@@ -78,7 +78,12 @@ async function syncOrganos(jobName: string, runId: string) {
       metrics.increment('etl.items.processed');
       const duration = Date.now() - startItem;
       metrics.histogram('etl.items.processed.duration_ms', duration);
-      logger.info(`Órgano procesado (tipo ${tipoAdmin})`, { ...itemMeta, durationMs: duration });
+      
+      // Solo logueamos cada 50 registros para reducir el ruido en los logs
+      if (processed % 50 === 0) {
+        logger.info(`Órganos procesados: ${processed} (tipo ${tipoAdmin})`, { ...logMeta, processed, durationMs: duration });
+      }
+      
       if (node.children) {
         for (const child of node.children) {
           await processNode(child, tipoAdmin);
@@ -95,18 +100,33 @@ async function syncOrganos(jobName: string, runId: string) {
 
   try {
     // Hacemos una llamada por cada tipo de órgano (Estatal, Autonómico, etc.)
-    for (const tipoAdmin of tiposAdmin) {
+    for (let i = 0; i < tiposAdmin.length; i++) {
+      const tipoAdmin = tiposAdmin[i];
+      const tipoName = tipoAdmin === 'C' ? 'Central' : tipoAdmin === 'A' ? 'Autonómica' : tipoAdmin === 'L' ? 'Local' : 'Otros';
+      
+      logger.info(`🔄 Procesando administración ${tipoName} (${i + 1}/${tiposAdmin.length})`, { ...logMeta, tipoAdmin, tipoName });
+      
       const url = `${SNPSAP_API_BASE_URL}${endpoint}?vpd=${encodeURIComponent(PORTAL)}&idAdmon=${tipoAdmin}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       });
+      
+      if (!response.ok) {
+        logger.error(`Error fetching datos para administración ${tipoName}`, new Error(`HTTP ${response.status}`), { ...logMeta, tipoAdmin, status: response.status });
+        continue;
+      }
+      
       const items: Array<{ id: number; descripcion: string; children?: any[] }> =
         response.status === 204 ? [] : await response.json();
+      
+      logger.info(`📄 Obtenidos ${items.length} órganos raíz para administración ${tipoName}`, { ...logMeta, tipoAdmin, count: items.length });
 
       for (const root of items) {
         await processNode(root, tipoAdmin);
       }
+      
+      logger.info(`✅ Completada administración ${tipoName}`, { ...logMeta, tipoAdmin, processed });
     }
 
     const totalDuration = Date.now() - startAll;
