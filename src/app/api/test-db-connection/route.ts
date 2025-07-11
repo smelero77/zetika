@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { dbETL } from '~/server/db';
+import { dbETL as db } from '~/server/db';
 
 export async function GET() {
   try {
@@ -7,13 +7,13 @@ export async function GET() {
     
     // Intentar una consulta simple para verificar la conexión
     const start = Date.now();
-    const result = await dbETL.$queryRaw`SELECT 1 as test`;
+    const result = await db.$queryRaw`SELECT 1 as test`;
     const duration = Date.now() - start;
     
     console.log('Conexión exitosa, resultado:', result);
     
     // También probar una consulta a una tabla real
-    const count = await dbETL.catalogoObjetivo.count();
+    const count = await db.catalogoObjetivo.count();
     
     return NextResponse.json({
       success: true,

@@ -1,4 +1,4 @@
-import { db } from '@/lib/prisma';
+import { dbETL as db } from '~/server/db';
 import { logger } from '@/server/lib/logger';
 
 export interface CatalogResolutionResult {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { dbETL } from '~/server/db';
+import { dbETL as db } from '~/server/db';
 import { logger, batchLogger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
@@ -159,13 +159,13 @@ export async function POST(req: Request) {
 
   try {
     const syncTasks = [
-      syncSimpleCatalog(jobName, runId, 'Finalidades', '/finalidades', dbETL.finalidad),
-      syncSimpleCatalog(jobName, runId, 'Instrumentos de Ayuda', '/instrumentos', dbETL.instrumentoAyuda),
-      syncSimpleCatalog(jobName, runId, 'Tipos de Beneficiario', '/beneficiarios', dbETL.tipoBeneficiario),
-      syncSimpleCatalog(jobName, runId, 'Actividades (Sectores)', '/actividades', dbETL.actividad),
-      syncSimpleCatalog(jobName, runId, 'Reglamentos UE', '/reglamentos', dbETL.reglamentoUE),
-      syncSimpleCatalog(jobName, runId, 'Sectores de Productos', '/sectores', dbETL.sectorProducto),
-      syncSimpleCatalog(jobName, runId, 'Catalogo de Objetivos', '/objetivos', dbETL.catalogoObjetivo),
+      syncSimpleCatalog(jobName, runId, 'Finalidades', '/finalidades', db.finalidad),
+      syncSimpleCatalog(jobName, runId, 'Instrumentos de Ayuda', '/instrumentos', db.instrumentoAyuda),
+      syncSimpleCatalog(jobName, runId, 'Tipos de Beneficiario', '/beneficiarios', db.tipoBeneficiario),
+      syncSimpleCatalog(jobName, runId, 'Actividades (Sectores)', '/actividades', db.actividad),
+      syncSimpleCatalog(jobName, runId, 'Reglamentos UE', '/reglamentos', db.reglamentoUE),
+      syncSimpleCatalog(jobName, runId, 'Sectores de Productos', '/sectores', db.sectorProducto),
+      syncSimpleCatalog(jobName, runId, 'Catalogo de Objetivos', '/objetivos', db.catalogoObjetivo),
     ];
 
     const results = await Promise.all(syncTasks);

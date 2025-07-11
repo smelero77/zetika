@@ -1,7 +1,8 @@
-import fetch from 'node-fetch';
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { dbETL as db } from '~/server/db';
 import { supabaseAdmin } from '~/server/lib/supabase';
 import { logger } from '~/server/lib/logger';
-import { dbETL } from '~/server/db';
 
 export async function fetchAndStoreDocument(
   bdns: string,
@@ -10,7 +11,7 @@ export async function fetchAndStoreDocument(
   const remoteUrl = `https://www.infosubvenciones.es/bdnstrans/GE/es/convocatoria/${bdns}/document/${docId}`;
   
   // Log inicial con información del documento
-  const docInfo = await dbETL.documento.findUnique({
+  const docInfo = await db.documento.findUnique({
     where: { idOficial: docId },
     select: { nombreFic: true, descripcion: true, longitud: true }
   });
@@ -143,8 +144,8 @@ export async function getDocumentStats(bdns?: string) {
   const whereClause = bdns ? { convocatoria: { codigoBDNS: bdns } } : {};
   
   const [total, conStorage, sinStorage] = await Promise.all([
-    dbETL.documento.count({ where: whereClause }),
-    dbETL.documento.count({ 
+    db.documento.count({ where: whereClause }),
+    db.documento.count({ 
       where: { 
         ...whereClause,
         AND: [
@@ -153,7 +154,7 @@ export async function getDocumentStats(bdns?: string) {
         ]
       } 
     }),
-    dbETL.documento.count({ 
+    db.documento.count({ 
       where: { 
         ...whereClause,
         OR: [
@@ -176,7 +177,7 @@ export async function getDocumentStats(bdns?: string) {
  * Obtiene lista de documentos pendientes de descarga
  */
 export async function getPendingDocuments(limit = 50) {
-  return dbETL.documento.findMany({
+  return db.documento.findMany({
     where: {
       OR: [
         { storagePath: null },

@@ -1,4 +1,4 @@
-import { db, dbETL } from '~/server/db';
+import { dbETL as db } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 import { metrics } from '~/server/lib/metrics';
 import { SNPSAP_API_BASE_URL } from '~/server/lib/constants';
@@ -149,7 +149,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     }
 
     // --- PASO 4: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
-    const convocatoria = await dbETL.convocatoria.upsert({
+    const convocatoria = await db.convocatoria.upsert({
         where: { idOficial: validatedDetalle.id },
         create: {
             idOficial: validatedDetalle.id,
@@ -236,9 +236,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
 
     if (validatedDetalle.documentos && validatedDetalle.documentos.length > 0) {
         syncTaskNames.push('documentos');
-        syncTasks.push(dbETL.$transaction([
-            dbETL.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            dbETL.documento.createMany({
+        syncTasks.push(db.$transaction([
+            db.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+            db.documento.createMany({
                 data: validatedDetalle.documentos.map((doc) => ({
                     idOficial: doc.id,
                     nombreFic: doc.nombreFic,
@@ -255,9 +255,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     
     if (validatedDetalle.anuncios && validatedDetalle.anuncios.length > 0) {
         syncTaskNames.push('anuncios');
-        syncTasks.push(dbETL.$transaction([
-            dbETL.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            dbETL.anuncio.createMany({
+        syncTasks.push(db.$transaction([
+            db.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+            db.anuncio.createMany({
                 data: validatedDetalle.anuncios.map((an) => ({
                     numAnuncio: parseNumber(an.numAnuncio),
                     titulo: an.titulo || '',
@@ -277,9 +277,9 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     // Los objetivos ya se manejan en la relación M-M con catálogos
     // if (validatedDetalle.objetivos && validatedDetalle.objetivos.length > 0) {
     //     syncTaskNames.push('objetivos');
-    //     syncTasks.push(dbETL.$transaction([
-    //         dbETL.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-    //         dbETL.objetivo.createMany({
+    //     syncTasks.push(db.$transaction([
+    //         db.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+    //         db.objetivo.createMany({
     //             data: validatedDetalle.objetivos.map((obj) => ({
     //                 descripcion: obj.descripcion,
     //                 convocatoriaId: convocatoria.id,
@@ -308,7 +308,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     }
 
     // Actualizar hash y fecha de sincronización
-    await dbETL.convocatoria.update({
+    await db.convocatoria.update({
         where: { id: convocatoria.id },
         data: {
             contentHash: newHash,

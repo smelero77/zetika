@@ -1,4 +1,4 @@
-import { db } from '~/server/db';
+import { dbETL as db } from '~/server/db';
 import { logger } from '~/server/lib/logger';
 
 // Tipos para el cache
