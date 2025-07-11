@@ -93,8 +93,6 @@ model Convocatoria {
   numeroConvocatoria        String?                  @unique
   /// Texto descriptivo del fin de solicitud (ej.: "Según convocatoria")
   textFinSolicitud          String?
-  /// Advertencia legal completa
-  advertencia               String?
   /// Señala que faltan catálogos obligatorios y requiere revisión
   needsManualReview         Boolean?                 @default(false)
   /// Relación con Sectores de Producto (nuevo pivot)
@@ -306,8 +304,6 @@ model PlanEstrategico {
   fechaAprobacion       DateTime?
   /// Ámbitos del plan estratégico (JSON array).
   ambitos               Json?
-  /// Advertencia legal.
-  advertencia           String?
   /// ID (oficial) de la convocatoria (relación opcional).
   convocatoriaId        Int?
   convocatoria          Convocatoria?  @relation(fields: [convocatoriaId], references: [idOficial])

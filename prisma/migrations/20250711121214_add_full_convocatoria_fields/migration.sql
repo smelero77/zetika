@@ -8,8 +8,7 @@
 CREATE TYPE "EstadoConvocatoria" AS ENUM ('ACTIVA', 'INACTIVA', 'ANULADA', 'CANCELADA', 'DESIERTA');
 
 -- AlterTable
-ALTER TABLE "Convocatoria" ADD COLUMN     "advertencia" TEXT,
-ADD COLUMN     "estado" "EstadoConvocatoria",
+ALTER TABLE "Convocatoria" ADD COLUMN     "estado" "EstadoConvocatoria",
 ADD COLUMN     "indInactiva" BOOLEAN DEFAULT false,
 ADD COLUMN     "needsManualReview" BOOLEAN DEFAULT false,
 ADD COLUMN     "numeroConvocatoria" TEXT,

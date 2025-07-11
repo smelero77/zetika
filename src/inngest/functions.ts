@@ -48,6 +48,7 @@ export const createConvocatoriaJobs = inngest.createFunction(
     const allItemsToProcess: { bdns: string; titulo: string }[] = [];
     let currentPage = 0;
     let isLastPage = false;
+    let totalRecibidasAPI = 0; // <-- contador de convocatorias recibidas
 
     while (!isLastPage) {
       const data = await step.run(`fetch-page-${currentPage}`, async () => {
@@ -64,6 +65,7 @@ export const createConvocatoriaJobs = inngest.createFunction(
       }
 
       const items = Array.isArray(data.content) ? data.content : [];
+      totalRecibidasAPI += items.length; // <-- sumar al contador
       for (const _item of items) {
         const item = _item as { numeroConvocatoria?: string; id?: string; descripcion?: string };
         if (!item || !item.numeroConvocatoria || !item.id) continue;
@@ -118,11 +120,15 @@ export const createConvocatoriaJobs = inngest.createFunction(
         };
     });
 
-    logger.info(`📊 Sincronización configurada: ${batchEvents.length} lotes, ${allItemsToProcess.length} convocatorias`);
+    logger.info(`📊 Total convocatorias recibidas de la API: ${totalRecibidasAPI}`);
+    logger.info(`📊 Sincronización configurada: ${batchEvents.length} lotes, ${allItemsToProcess.length} convocatorias a procesar`, {
+      totalRecibidasAPI,
+      totalAProcesar: allItemsToProcess.length
+    });
     if (batchEvents.length > 0) {
         await step.sendEvent("fan-out-convocatoria-batches", batchEvents);
     }
-    return { totalConvocatorias: allItemsToProcess.length, totalLotes: batchEvents.length };
+    return { totalConvocatorias: allItemsToProcess.length, totalLotes: batchEvents.length, totalRecibidasAPI };
   }
 );
 
@@ -179,7 +185,8 @@ export const processConvocatoriaBatch = inngest.createFunction(
     }> = [];
     
     let totalDocumentosEncontrados = 0;
-    
+    let totalConvocatoriasProcesadas = 0; // <-- contador de procesadas
+
     for (const convo of convocatorias) {
       // Validación de cada convocatoria
       if (!convo || !convo.bdns) {
@@ -195,18 +202,24 @@ export const processConvocatoriaBatch = inngest.createFunction(
         if (!detalle) {
           return { documentos: [], bdns: convo.bdns };
         }
-        const { hash, documentos } = await processAndSaveDetalle(detalle, 'inngest-batch', event.id || 'unknown');
-        updateConvocatoriaCache(detalle, hash);
-        
-        // Asegurar que documentos es un array
-        const docArray = Array.isArray(documentos) ? documentos : [];
-        
-        // Log información de documentos encontrados
-        if (docArray.length > 0) {
-          logger.info(`📄 Convocatoria ${convo.bdns} tiene ${docArray.length} documentos para descargar`);
+        try {
+          const { hash, documentos } = await processAndSaveDetalle(detalle, 'inngest-batch', event.id || 'unknown');
+          updateConvocatoriaCache(detalle, hash);
+          totalConvocatoriasProcesadas++; // <-- solo si no hay error
+          
+          // Asegurar que documentos es un array
+          const docArray = Array.isArray(documentos) ? documentos : [];
+          
+          // Log información de documentos encontrados
+          if (docArray.length > 0) {
+            logger.info(`📄 Convocatoria ${convo.bdns} tiene ${docArray.length} documentos para descargar`);
+          }
+          
+          return { documentos: docArray, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
+        } catch (error) {
+          logger.warn(`Convocatoria descartada por error de validación o guardado`, { bdns: convo.bdns, error });
+          return { documentos: [], bdns: convo.bdns };
         }
-        
-        return { documentos: docArray, bdns: (detalle as { codigoBDNS?: string }).codigoBDNS || convo.bdns };
       });
       
       if (result && Array.isArray(result.documentos) && result.documentos.length > 0) {
@@ -244,7 +257,8 @@ export const processConvocatoriaBatch = inngest.createFunction(
     });
     
     logger.info(`✅ Lote ${batch_index}/${total_batches} completado`, {
-      convocatoriasProcesadas: convocatorias.length,
+      convocatoriasProcesadas: totalConvocatoriasProcesadas,
+      convocatoriasEnLote: convocatorias.length,
       documentosEncontrados: totalDocumentosEncontrados,
       documentosEncolados: allDocEvents.length,
       estadisticasGlobales: {
@@ -262,7 +276,7 @@ export const processConvocatoriaBatch = inngest.createFunction(
     });
     
     return { 
-      processedCount: convocatorias.length, 
+      processedCount: totalConvocatoriasProcesadas, 
       documentsEnqueued: allDocEvents.length,
       documentsFound: totalDocumentosEncontrados,
       globalStats: stats

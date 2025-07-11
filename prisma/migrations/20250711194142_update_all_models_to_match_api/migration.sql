@@ -160,10 +160,7 @@ ADD COLUMN     "numeroConvocatoria" TEXT NOT NULL,
 ADD COLUMN     "sectorProducto" TEXT;
 
 -- AlterTable
-ALTER TABLE "PlanEstrategico" ADD COLUMN     "advertencia" TEXT,
-ADD COLUMN     "fechaAprobacion" TIMESTAMP(3),
-DROP COLUMN "ambitos",
-ADD COLUMN     "ambitos" JSONB;
+ALTER TABLE "PlanEstrategico" ADD COLUMN     "convocatoriaId" INTEGER;
 
 -- AlterTable
 ALTER TABLE "ReglamentoUE" ADD COLUMN     "autorizacion" INTEGER;
