@@ -36,9 +36,9 @@ const ReglamentoUESchema = z.object({
 });
 
 const OrganoSchema = z.object({
-  nivel1: z.string().max(200).optional(),
-  nivel2: z.string().max(200).optional(),
-  nivel3: z.string().max(200).optional(),
+  nivel1: z.string().max(200).optional().nullable(),
+  nivel2: z.string().max(200).optional().nullable(),
+  nivel3: z.string().max(200).optional().nullable(),
 });
 
 const DocumentoSchema = z.object({
@@ -82,8 +82,8 @@ export const ConvocatoriaDetalleSchema = z.object({
   }).optional(),
   
   // Campos opcionales con validaciones
-  organo: OrganoSchema.optional(),
-  sedeElectronica: z.string().url().max(500).optional(),
+  organo: OrganoSchema.optional().nullable(),
+  sedeElectronica: z.string().url().max(500).optional().nullable(),
   fechaRecepcion: z.string().refine(validateDate, {
     message: 'fechaRecepcion debe estar en formato YYYY-MM-DD'
   }).optional(),
@@ -94,7 +94,7 @@ export const ConvocatoriaDetalleSchema = z.object({
   mrr: z.boolean().optional(),
   
   descripcion: z.string().max(2000).optional(),
-  descripcionLeng: z.string().max(2000).optional(),
+  descripcionLeng: z.string().max(2000).optional().nullable(),
   
   tiposBeneficiarios: z.array(TipoBeneficiarioSchema).optional(),
   sectores: z.array(SectorSchema).optional(),
@@ -109,19 +109,19 @@ export const ConvocatoriaDetalleSchema = z.object({
   
   fechaInicioSolicitud: z.string().refine(validateDate, {
     message: 'fechaInicioSolicitud debe estar en formato YYYY-MM-DD'
-  }).optional(),
+  }).optional().nullable(),
   fechaFinSolicitud: z.string().refine(validateDate, {
     message: 'fechaFinSolicitud debe estar en formato YYYY-MM-DD'
-  }).optional(),
+  }).optional().nullable(),
   
   textInicio: z.string().max(500).optional(),
   textFin: z.string().max(500).optional(),
   
-  ayudaEstado: z.string().max(100).optional(),
-  urlAyudaEstado: z.string().url().max(500).optional(),
+  ayudaEstado: z.string().max(100).optional().nullable(),
+  urlAyudaEstado: z.string().url().max(500).optional().nullable(),
   
   fondos: z.array(FondoSchema).optional(),
-  reglamento: ReglamentoUESchema.optional(),
+  reglamento: ReglamentoUESchema.optional().nullable(),
   objetivos: z.array(ObjetivoSchema).optional(),
   sectoresProductos: z.array(SectorProductoSchema).optional(),
   
