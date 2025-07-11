@@ -14,59 +14,8 @@ import {
   getCachedSectores,
   existingConvocatoriasCache,
 } from './cache';
-import { validateAndSanitizeConvocatoriaDetalle, sanitizeString } from '~/schemas/convocatoria-detalle';
+import { validateAndSanitizeConvocatoriaDetalle, sanitizeString, type ConvocatoriaDetalle } from '~/schemas/convocatoria-detalle';
 import { catalogResolver } from '~/server/services/catalog-resolver';
-
-// Tipos para los datos de convocatorias
-interface ConvocatoriaDetalle {
-    id: number;
-    codigoBDNS: string;
-    descripcion: string;
-    descripcionLeng?: string;
-    descripcionBasesReguladoras?: string;
-    presupuestoTotal?: number;
-    urlBasesReguladoras?: string;
-    sedeElectronica?: string;
-    fechaPublicacion?: string;
-    fechaRecepcion?: string;
-    fechaInicioSolicitud?: string;
-    fechaFinSolicitud?: string;
-    abierto?: boolean;
-    mrr?: string;
-    tipoConvocatoria?: string;
-    sePublicaDiarioOficial?: boolean;
-    textInicio?: string;
-    ayudaEstado?: string;
-    urlAyudaEstado?: string;
-    descripcionFinalidad?: string;
-    reglamento?: { autorizacion?: string };
-    tiposBeneficiarios?: Array<{ id: number }>;
-    instrumentos?: Array<{ id: number }>;
-    regiones?: Array<{ id: number }>;
-    fondos?: Array<{ descripcion: string }>;
-    sectores?: Array<{ codigo: string }>;
-    documentos?: Array<{
-        id: number;
-        nombreFic: string;
-        descripcion: string;
-        long: number;
-        datMod?: string;
-        datPublicacion?: string;
-    }>;
-    anuncios?: Array<{
-        numAnuncio: string;
-        titulo: string;
-        tituloLeng?: string;
-        texto: string;
-        url: string;
-        cve: string;
-        desDiarioOficial: string;
-        datPublicacion?: string;
-    }>;
-    objetivos?: Array<{
-        descripcion: string;
-    }>;
-}
 
 const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
 
@@ -109,17 +58,17 @@ export async function getConvocatoriaDetalle(bdns: string, jobName: string, runI
 }
 
 // Helper functions para conversión de tipos
-function parseDate(dateStr: string | undefined): Date {
+function parseDate(dateStr: string | null | undefined): Date {
     if (!dateStr) throw new Error('Fecha requerida pero no proporcionada');
     return new Date(dateStr);
 }
 
-function parseDateOptional(dateStr: string | undefined): Date | null {
+function parseDateOptional(dateStr: string | null | undefined): Date | null {
     return dateStr ? new Date(dateStr) : null;
 }
 
-function parseBoolean(value: string | boolean | undefined): boolean | null {
-    if (value === undefined) return null;
+function parseBoolean(value: string | boolean | null | undefined): boolean | null {
+    if (value === undefined || value === null) return null;
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {
         return value.toLowerCase() === 'true' || value === '1';
@@ -276,6 +225,8 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
             regionesDeImpacto: { set: regionesResult.ids.map(id => ({ id })) },
             fondosEuropeos: { set: fondosResult.ids.map(id => ({ id })) },
             sectoresEconomicos: { set: sectoresResult.ids.map(id => ({ id })) },
+            sectoresDeProducto: { set: sectoresProductosResult.ids.map(id => ({ id })) },
+            objetivos: { set: objetivosResult.ids.map(id => ({ id })) },
         },
     });
 

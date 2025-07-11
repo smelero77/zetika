@@ -412,6 +412,48 @@ export const syncRegiones = inngest.createFunction(
 );
 
 /**
+ * FUNCIÓN 6: Sincronización de Fondos
+ * Sincroniza los fondos usando el endpoint batch existente
+ */
+export const syncFondos = inngest.createFunction(
+  {
+    id: "sync-fondos",
+    name: "Sincronizar Fondos",
+    retries: 3,
+  },
+  { event: "app/fondos.sync.requested" },
+  async ({ step, logger }) => {
+    logger.info("🔄 Iniciando sincronización de fondos...");
+
+    try {
+      // Llamar al endpoint de fondos
+      const response = await step.run("call-fondos-api", async () => {
+        const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-fondos`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return await response.json();
+      });
+
+      logger.info("✅ Sincronización de fondos completada", response);
+      return response;
+    } catch (error) {
+      logger.error("❌ Error en sincronización de fondos", error);
+      throw error;
+    }
+  }
+);
+
+/**
  * FUNCIÓN 6: Sincronización de Grandes Beneficiarios
  * Sincroniza los grandes beneficiarios usando el endpoint batch existente
  */
@@ -893,6 +935,18 @@ export const syncAll = inngest.createFunction(
 
       await step.run("sync-regiones", async () => {
         const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-regiones`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        return response.ok ? await response.json() : null;
+      });
+
+      await step.run("sync-fondos", async () => {
+        const url = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/batch/sync-fondos`;
         const response = await fetch(url, {
           method: 'POST',
           headers: {

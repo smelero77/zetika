@@ -27,10 +27,10 @@ export class CatalogResolver {
   }
 
   /**
-   * Resuelve un catálogo por descripción, con cache en memoria
+   * Resuelve un catálogo específico usando métodos nativos de Prisma
    */
-  private async resolveCatalog(
-    tableName: string,
+  private async resolveCatalogByType(
+    catalogType: 'instrumentoAyuda' | 'tipoBeneficiario' | 'actividad' | 'region' | 'fondo' | 'catalogoObjetivo' | 'sectorProducto' | 'reglamentoUE' | 'organo',
     description: string,
     cacheKey: string
   ): Promise<CatalogResolutionResult> {
@@ -48,40 +48,230 @@ export class CatalogResolver {
     }
 
     try {
-      // Buscar por descripción exacta (case-insensitive)
-      const result = await db.$queryRaw<Array<{ id: number }>>`
-        SELECT id FROM "${tableName}" 
-        WHERE LOWER(TRIM(descripcion)) = LOWER(TRIM(${description}))
-        LIMIT 1
-      `;
+      let result: any = null;
 
-      if (result.length > 0 && result[0]?.id) {
-        const id = result[0].id;
-        this.cache.set(cacheKey, id);
+      switch (catalogType) {
+        case 'instrumentoAyuda':
+          result = await db.instrumentoAyuda.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'tipoBeneficiario':
+          result = await db.tipoBeneficiario.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'actividad':
+          result = await db.actividad.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'region':
+          result = await db.region.findFirst({
+            where: {
+              nombre: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'fondo':
+          result = await db.fondo.findFirst({
+            where: {
+              nombre: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'catalogoObjetivo':
+          result = await db.catalogoObjetivo.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'sectorProducto':
+          result = await db.sectorProducto.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'reglamentoUE':
+          result = await db.reglamentoUE.findFirst({
+            where: {
+              descripcion: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'organo':
+          result = await db.organo.findFirst({
+            where: {
+              nombre: {
+                equals: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+      }
+
+      if (result?.id) {
+        this.cache.set(cacheKey, result.id);
         return {
           found: true,
-          id,
+          id: result.id,
           description: description.trim()
         };
       }
 
-      // Si no se encuentra, buscar por similitud (LIKE)
-      const similarResult = await db.$queryRaw<Array<{ id: number; descripcion: string }>>`
-        SELECT id, descripcion FROM "${tableName}" 
-        WHERE LOWER(TRIM(descripcion)) LIKE LOWER(TRIM(${description}))
-        OR LOWER(TRIM(descripcion)) LIKE LOWER(TRIM(${description})) || '%'
-        OR LOWER(TRIM(descripcion)) LIKE '%' || LOWER(TRIM(${description}))
-        LIMIT 1
-      `;
+      // Si no se encuentra por descripción exacta, buscar por similitud
+      let similarResult: any = null;
 
-      if (similarResult.length > 0 && similarResult[0]?.id && similarResult[0]?.descripcion) {
-        const id = similarResult[0].id;
-        this.cache.set(cacheKey, id);
-        logger.warn(`Catálogo ${tableName} resuelto por similitud: "${description}" → "${similarResult[0].descripcion}"`);
+      switch (catalogType) {
+        case 'instrumentoAyuda':
+          similarResult = await db.instrumentoAyuda.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'tipoBeneficiario':
+          similarResult = await db.tipoBeneficiario.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'actividad':
+          similarResult = await db.actividad.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'region':
+          similarResult = await db.region.findFirst({
+            where: {
+              nombre: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'fondo':
+          similarResult = await db.fondo.findFirst({
+            where: {
+              nombre: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'catalogoObjetivo':
+          similarResult = await db.catalogoObjetivo.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'sectorProducto':
+          similarResult = await db.sectorProducto.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'reglamentoUE':
+          similarResult = await db.reglamentoUE.findFirst({
+            where: {
+              descripcion: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+
+        case 'organo':
+          similarResult = await db.organo.findFirst({
+            where: {
+              nombre: {
+                contains: description.trim(),
+                mode: 'insensitive'
+              }
+            }
+          });
+          break;
+      }
+
+      if (similarResult?.id) {
+        this.cache.set(cacheKey, similarResult.id);
+        const resultDescription = similarResult.descripcion || similarResult.nombre;
+        logger.warn(`Catálogo ${catalogType} resuelto por similitud: "${description}" → "${resultDescription}"`);
         return {
           found: true,
-          id,
-          description: similarResult[0].descripcion
+          id: similarResult.id,
+          description: resultDescription
         };
       }
 
@@ -92,7 +282,7 @@ export class CatalogResolver {
       };
 
     } catch (error) {
-      logger.error(`Error resolviendo catálogo ${tableName}:`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(`Error resolviendo catálogo ${catalogType}:`, error instanceof Error ? error : new Error(String(error)));
       return {
         found: false,
         needsManualReview: true,
@@ -105,9 +295,9 @@ export class CatalogResolver {
    * Resuelve múltiples catálogos de un array de descripciones
    */
   async resolveCatalogArray(
-    tableName: string,
-    descriptions: Array<{ descripcion?: string }>,
-    catalogType: string
+    catalogType: 'instrumentoAyuda' | 'tipoBeneficiario' | 'actividad' | 'region' | 'fondo' | 'catalogoObjetivo' | 'sectorProducto',
+    descriptions: Array<{ descripcion?: string | null }>,
+    catalogTypeName: string
   ): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
     const ids: number[] = [];
     const missingCatalogs: string[] = [];
@@ -117,8 +307,8 @@ export class CatalogResolver {
     for (const item of descriptions) {
       if (!item.descripcion?.trim()) continue;
 
-      const cacheKey = `${tableName}:${item.descripcion.trim().toLowerCase()}`;
-      const result = await this.resolveCatalog(tableName, item.descripcion, cacheKey);
+      const cacheKey = `${catalogType}:${item.descripcion.trim().toLowerCase()}`;
+      const result = await this.resolveCatalogByType(catalogType, item.descripcion, cacheKey);
 
       if (result.found && result.id) {
         ids.push(result.id);
@@ -126,7 +316,7 @@ export class CatalogResolver {
       } else {
         totalNotFound++;
         if (result.description) {
-          missingCatalogs.push(`${catalogType}: ${result.description}`);
+          missingCatalogs.push(`${catalogTypeName}: ${result.description}`);
         }
       }
     }
@@ -145,56 +335,56 @@ export class CatalogResolver {
   /**
    * Resuelve instrumentos de ayuda
    */
-  async resolveInstrumentos(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('InstrumentoAyuda', descriptions, 'Instrumento');
+  async resolveInstrumentos(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('instrumentoAyuda', descriptions, 'Instrumento');
   }
 
   /**
    * Resuelve tipos de beneficiario
    */
-  async resolveTiposBeneficiarios(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('TipoBeneficiario', descriptions, 'Tipo Beneficiario');
+  async resolveTiposBeneficiarios(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('tipoBeneficiario', descriptions, 'Tipo Beneficiario');
   }
 
   /**
    * Resuelve sectores
    */
-  async resolveSectores(descriptions: Array<{ descripcion?: string; codigo?: string }>) {
-    return this.resolveCatalogArray('Actividad', descriptions, 'Sector');
+  async resolveSectores(descriptions: Array<{ descripcion?: string | null; codigo?: string | null }>) {
+    return this.resolveCatalogArray('actividad', descriptions, 'Sector');
   }
 
   /**
    * Resuelve regiones
    */
-  async resolveRegiones(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('Region', descriptions, 'Región');
+  async resolveRegiones(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('region', descriptions, 'Región');
   }
 
   /**
    * Resuelve fondos
    */
-  async resolveFondos(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('Fondo', descriptions, 'Fondo');
+  async resolveFondos(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('fondo', descriptions, 'Fondo');
   }
 
   /**
    * Resuelve objetivos
    */
-  async resolveObjetivos(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('Objetivo', descriptions, 'Objetivo');
+  async resolveObjetivos(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('catalogoObjetivo', descriptions, 'Objetivo');
   }
 
   /**
    * Resuelve sectores de producto
    */
-  async resolveSectoresProductos(descriptions: Array<{ descripcion?: string }>) {
-    return this.resolveCatalogArray('SectorProducto', descriptions, 'Sector Producto');
+  async resolveSectoresProductos(descriptions: Array<{ descripcion?: string | null }>) {
+    return this.resolveCatalogArray('sectorProducto', descriptions, 'Sector Producto');
   }
 
   /**
    * Resuelve reglamentos UE
    */
-  async resolveReglamentoUE(reglamento?: { descripcion?: string; autorizacion?: number }): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
+  async resolveReglamentoUE(reglamento?: { descripcion?: string | null; autorizacion?: number | null } | null): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
     if (!reglamento?.descripcion?.trim()) {
       return { 
         ids: [], 
@@ -207,8 +397,8 @@ export class CatalogResolver {
       };
     }
 
-    const cacheKey = `ReglamentoUE:${reglamento.descripcion.trim().toLowerCase()}`;
-    const result = await this.resolveCatalog('ReglamentoUE', reglamento.descripcion, cacheKey);
+    const cacheKey = `reglamentoUE:${reglamento.descripcion.trim().toLowerCase()}`;
+    const result = await this.resolveCatalogByType('reglamentoUE', reglamento.descripcion, cacheKey);
     
     return {
       ids: result.found && result.id ? [result.id] : [],
@@ -224,7 +414,7 @@ export class CatalogResolver {
   /**
    * Resuelve órgano convocante
    */
-  async resolveOrgano(organo?: { nivel1?: string; nivel2?: string; nivel3?: string }): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
+  async resolveOrgano(organo?: { nivel1?: string | null; nivel2?: string | null; nivel3?: string | null } | null): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
     if (!organo?.nivel1?.trim() && !organo?.nivel2?.trim()) {
       return { 
         ids: [], 
@@ -239,8 +429,8 @@ export class CatalogResolver {
 
     // Buscar por nivel1 + nivel2 (más específico)
     if (organo.nivel1?.trim() && organo.nivel2?.trim()) {
-      const cacheKey = `Organo:${organo.nivel1.trim().toLowerCase()}:${organo.nivel2.trim().toLowerCase()}`;
-      const result = await this.resolveCatalog('Organo', `${organo.nivel1} - ${organo.nivel2}`, cacheKey);
+      const cacheKey = `organo:${organo.nivel1.trim().toLowerCase()}:${organo.nivel2.trim().toLowerCase()}`;
+      const result = await this.resolveCatalogByType('organo', `${organo.nivel1} - ${organo.nivel2}`, cacheKey);
       if (result.found && result.id) {
         return {
           ids: [result.id],
@@ -256,8 +446,8 @@ export class CatalogResolver {
 
     // Fallback: buscar solo por nivel1
     if (organo.nivel1?.trim()) {
-      const cacheKey = `Organo:${organo.nivel1.trim().toLowerCase()}`;
-      const result = await this.resolveCatalog('Organo', organo.nivel1, cacheKey);
+      const cacheKey = `organo:${organo.nivel1.trim().toLowerCase()}`;
+      const result = await this.resolveCatalogByType('organo', organo.nivel1, cacheKey);
       return {
         ids: result.found && result.id ? [result.id] : [],
         summary: {

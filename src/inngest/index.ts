@@ -5,6 +5,7 @@ export {
   processDocumentStorage,
   syncCatalogosBasicos,
   syncRegiones,
+  syncFondos,
   syncGrandesBeneficiarios,
   syncAyudasDeEstado,
   syncPartidosPoliticos,

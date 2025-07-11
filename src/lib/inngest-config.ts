@@ -51,6 +51,7 @@ export const INNGEST_CONFIG = {
   BATCH_ENDPOINTS: {
     CATALOGOS_BASICOS: "/api/batch/sync-catalogos-basicos",
     REGIONES: "/api/batch/sync-regiones",
+    FONDOS: "/api/batch/sync-fondos",
     GRANDES_BENEFICIARIOS: "/api/batch/sync-grandes-beneficiarios",
     AYUDAS_ESTADO: "/api/batch/sync-ayudas-estado",
     PARTIDOS_POLITICOS: "/api/batch/sync-partidos-politicos",
@@ -66,6 +67,7 @@ export const INNGEST_CONFIG = {
     // Eventos de sincronización individual
     CATALOGOS_SYNC: "app/catalogos.sync.requested",
     REGIONES_SYNC: "app/regiones.sync.requested",
+    FONDOS_SYNC: "app/fondos.sync.requested",
     GRANDES_BENEFICIARIOS_SYNC: "app/grandes-beneficiarios.sync.requested",
     AYUDAS_ESTADO_SYNC: "app/ayudas-estado.sync.requested",
     PARTIDOS_POLITICOS_SYNC: "app/partidos-politicos.sync.requested",
@@ -90,6 +92,7 @@ export const INNGEST_CONFIG = {
   SYNC_ORDER: [
     "CATALOGOS_BASICOS",
     "REGIONES", 
+    "FONDOS",
     "ORGANOS",
     "GRANDES_BENEFICIARIOS",
     "AYUDAS_ESTADO",
