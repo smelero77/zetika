@@ -75,6 +75,7 @@ model Convocatoria {
   reglamento                  ReglamentoUE?              @relation(fields: [reglamentoId], references: [idOficial])
   minimis                     Minimis[]
   objetivos                   Objetivo[]
+  planesEstrategicos         PlanEstrategico[]
   sanciones                   Sancion[]
   documentos                  Documento[]
   sectoresEconomicos          Actividad[]                @relation("ActividadToConvocatoria")
@@ -84,6 +85,20 @@ model Convocatoria {
   regionesDeImpacto           Region[]                   @relation("ConvocatoriaToRegion")
   tags                        Tag[]                      @relation("ConvocatoriaToTag")
   tiposBeneficiario           TipoBeneficiario[]         @relation("ConvocatoriaToTipoBeneficiario")
+  ///  Estado funcional de la convocatoria según BDNS (ACTIVA, ANULADA, etc.)
+  estado                    EstadoConvocatoria?
+  /// Indica si la convocatoria está marcada como inactiva en BDNS
+  indInactiva               Boolean?                 @default(false)
+  /// Número de convocatoria interno (numConvocatoria)
+  numeroConvocatoria        String?                  @unique
+  /// Texto descriptivo del fin de solicitud (ej.: "Según convocatoria")
+  textFinSolicitud          String?
+  /// Advertencia legal completa
+  advertencia               String?
+  /// Señala que faltan catálogos obligatorios y requiere revisión
+  needsManualReview         Boolean?                 @default(false)
+  /// Relación con Sectores de Producto (nuevo pivot)
+  sectoresDeProducto        SectorProducto[]         @relation("ConvocatoriaToSectorProducto")
 
   @@index([organoId])
   @@index([finalidadId])
@@ -222,6 +237,8 @@ model PlanEstrategico {
   vigenciaDesde        Int
   vigenciaHasta        Int
   ambitos              String?
+  convocatoriaId          Int?
+  convocatoria            Convocatoria?  @relation(fields: [convocatoriaId], references: [idOficial])
 }
 
 model Sancion {
@@ -352,6 +369,7 @@ model SectorProducto {
   idOficial   Int       @unique
   descripcion String
   minimis     Minimis[]
+  convocatorias Convocatoria[] @relation("ConvocatoriaToSectorProducto")
 }
 
 model CatalogoObjetivo {
@@ -602,4 +620,13 @@ model UsuarioPerfilPlazoCarga {
   @@id([usuarioPerfilId, plazoId])
   @@index([usuarioPerfilId])
   @@index([plazoId])
+}
+
+/// Enum para estados de convocatoria
+enum EstadoConvocatoria {
+  ACTIVA
+  INACTIVA
+  ANULADA
+  CANCELADA
+  DESIERTA
 }

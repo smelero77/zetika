@@ -1,0 +1,883 @@
+
+
+
+
+
+
+
+SERVICIO WEB CONSULTA DE CONVOCATORIAS 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+1 
+ÍNDICE 
+Control Documental .............................................................................................. 2 
+1. Introducción .................................................................................................. 3 
+2. Descripción del Servicio Web de Consulta de Convocatorias .................. 4 
+2.1. Modos de funcionamiento .................................................................... 4 
+2.2. Órgano solicitante y Órgano Gestor .................................................... 5 
+2.3. Identificadores de petición ................................................................... 5 
+2.4. Identificadores de solicitud .................................................................. 5 
+2.5. Identificadores de transmisión ............................................................. 6 
+2.6. SOAP Fault ............................................................................................. 6 
+2.7. Versionado de los servicios web .......................................................... 6 
+3. Mensajes intercambiados funcionamiento Síncrono ................................. 8 
+3.1. Mensaje de Petición .............................................................................. 8 
+3.1.1. Datos Genéricos .............................................................................................. 9 
+3.1.2. Datos Específicos .......................................................................................... 11 
+3.2. Mensaje de Respuesta ........................................................................ 13 
+3.2.1. Datos Generales ............................................................................................ 13 
+3.2.2. Datos Específicos .......................................................................................... 15 
+3.2.2.1. UnaConvocatoria - DatosGeneralesCov............................................... 17 
+3.2.2.2. UnaConvocatoria - DatosBaseReguladora .......................................... 19 
+3.2.2.3. UnaConvocatoria - DatosSolicitudJustificacionFinanciacion ........... 20 
+3.2.2.4. UnaConvocatoria - OtrosDatos ............................................................. 23 
+3.2.2.5. UnaConvocatoria - OtrosDocumentos ................................................. 28 
+3.2.2.6. UnaConvocatoria - Extractos ................................................................ 29 
+3.2.2.7. UnaConvocatoria - Publicacion ............................................................. 32 
+3.3. Mensaje SOAP Fault ............................................................................ 33 
+4. Gestión de errores ...................................................................................... 35 
+4.1. Errores devueltos mediante el esquema SOAP Fault. ...................... 35 
+4.2. Errores funcionales devueltos por el servicio ................................... 36 
+5. Ejemplos de mensajes ............................................................................... 37 
+6. Versiones y funcionalidades...................................................................... 38 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+2 
+Control Documental 
+FECHA VERSIÓN CAMBIOS REALIZADOS 
+30/09/2016 1.14 Especificación inicial 
+16/11/2016 1.16 Se corrige errata en la descripción de la parte específica del Servicio Web 
+Consulta Convocatoria: faltaba el campo IdConvocatoria 
+15/06/2020 3.0 Se añaden nuevos campos para devolver información relativa a la 
+Resolución de 2020 de la Intervención General de la Administración del 
+Estado, por la que se regula el proceso de registro y publicación de 
+convocatorias en el Sistema Nacional de Publicidad de Subvenciones y 
+Ayudas Públicas. 
+20/07/2020 3.1 Corrección de errores. Cambio denominación campo 
+ContribucionOrgaInternacional. 
+17/08/2020 3.2 Se añaden los campos Anulada y LenguaCooficial. 
+02/02/2023 4.1 Corrección de errores. 
+30/08/2023 3.4.40 Nuevo atributo opcional Version en Peticion y Respuesta: 
+2.7 Versionado de los servicios web 
+Se añade nuevo código de error 4100. 
+Se añade el campo opcional SAExen en Respuesta 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+3 
+1. Introducción 
+La Base de Datos Nacional de Subvenciones (BDNS) contiene información sobre la 
+normativa aplicable y los procedimientos de gestión y de reintegro de las subvenciones 
+concedidas, así como la relativa a algunas prohibiciones para obtener la condición de 
+beneficiario. 
+Esta información es aportada a la base de datos bajo la exclusiva responsabilidad de los 
+órganos gestores de las subvenciones y está custodiada por la Intervención General de la 
+Administración del Estado. Para poder enviar esta información, se han desarrollado un conjunto 
+de servicios web. 
+Para obtener una visión global sobre la descripción, requisitos y características de los 
+servicios web que ofrece la BDNS, por favor consultar el documento "Especificaciones Genéricas 
+WS". 
+El presente documento recoge las especificaciones técnicas del servicio web de CONSULTA 
+DE CONVOCATORIAS (BDNSCONSULTACV). 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+4 
+2. Descripción del Servicio Web de Consulta de Convocatorias 
+Este servicio permite al requirente, la consulta de convocatorias. Permite dos modos de 
+consulta: 
+? Consulta de una única convocatoria identificada por su código. 
+? Obtener todas las convocatorias en las que participa un órgano gestor, bien como 
+propietario de la misma, o como autorizado en la gestión de sus concesiones. En este 
+caso además se puede limitar la consulta por un rango de fechas determinado. 
+2.1. Modos de funcionamiento 
+Todos los servicios web definidos para el suministro/consulta de información a la BDNS se 
+han implementado en modo síncrono, ampliándose su funcionalidad en algunos de ellos para 
+que admita funcionamiento asíncrono. 
+En el modo síncrono se intercambian dos mensajes, Petición y Respuesta, de forma que un 
+requirente realiza una petición al servicio deseado y permanece a la espera de la respuesta. El 
+intercambio de mensajes será el siguiente: 
+
+Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición 
+síncrona sólo admite una única solicitud de transmisión dentro de cada petición. 
+En el modo asíncrono se intercambian los mensajes Peticion, ConfirmacionPeticion, 
+SolicitudRespuesta y Respuesta. El requirente realiza una petición (con una o más solicitudes) 
+sin necesidad de permanecer a la espera de la respuesta. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+5 
+Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición 
+asíncrona podrá tener tantas solicitudes como soporte el servicio. Cada respuesta tendrá tantas 
+transmisiones como solicitudes haya recibido. 
+2.2. Órgano solicitante y Órgano Gestor 
+Es importante distinguir entre el Órgano solicitante y el Órgano gestor. 
+Como Órgano solicitante se entiende aquel órgano que va a hacer uso del servicio web para 
+la remisión/consulta de información. Este órgano se deberá identificar mediante su código DIR3 
+en el bloque Solicitante dentro de los mensajes Petición y Respuesta. 
+En los servicios web de remisión de información, el Órgano solicitante, en el caso de 
+administración autonómica o local, podrá enviar información de los órganos gestores 
+dependientes de él. En el servicio web de consulta, es posible consultar las convocatorias de un 
+órgano gestor determinado. Como órgano gestor se entiende aquel órgano responsable de la 
+concesión de subvenciones. Se identificará con su código DIR3, dentro del bloque 
+DatosEspecificos. 
+2.3. Identificadores de petición 
+Una petición está identificada con un ID único (IdPeticion) que la IGAE validará que no esté 
+repetido, lo cual permitirá realizar una trazabilidad de las peticiones recibidas. Para garantizar 
+la unicidad de los identificadores de petición para todos los organismos requirentes del servicio, 
+este identificador deberá tener una parte que identifique unívocamente al organismo. Por ello 
+el identificador de petición deberá incluir el código del organismo asignado por DIR3 (ej: 
+CodDIR3 + '-' + numPeticion). Se recomienda que el IdPeticion se genere con información de 
+fecha y hora más un secuencial con una longitud total de 26. Por ejemplo, con un formato del 
+tipo CodDIR3-YYYYMMDDhhmmssXX. 
+2.4. Identificadores de solicitud 
+Dentro de cada petición, podrán ir una o más solicitudes que deben poder identificarse de 
+forma única. La forma de asignar esta identificación (IdSolicitud) es: 
+? En el caso de peticiones síncronas solo habrá una solicitud y por tanto su 
+identificador debe de coincidir con el identificador de petición. 
+? En el caso de peticiones asíncronas, se definirá un número máximo de solicitudes 
+permitidas. El identificador será un número secuencial de solicitud. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+6 
+2.5. Identificadores de transmisión 
+En la petición, dentro de cada solicitud, este valor será nulo. En la respuesta, para garantizar 
+los mecanismos de auditoría y trazabilidad, la IGAE generará un Identificador único de cada 
+transmisión realizada por él. Este identificador único se podrá usar a modo de "Código Seguro 
+de Verificación" o referencia de la transmisión realizada y podrá ser verificada por los órganos 
+de fiscalización, control y auditoría correspondientes. 
+2.6. SOAP Fault 
+Algunos de los errores que se puedan generar durante la utilización del servicio se 
+transmitirán utilizando el estándar SOAP Fault. Es decir, si alguna solicitud provoca un error 
+SOAP Fault entonces únicamente se devuelve este objeto, no un mensaje de respuesta. 
+2.7. Versionado de los servicios web 
+A partir de la versión 3.4.40 se introduce el versionado de los servicios web. Para facilitar a 
+los integradores la adopción de nuevas funcionalidades y así adaptarse a los cambios 
+normativos, se propone un esquema de versiones y funcionalidades. Una versión estará 
+compuesta por una o más funcionalidades, y una funcionalidad podrá estar asignada a una o 
+varias versiones. En cada versión se indicarán todas funcionalidades que aplican, no 
+heredándose por defecto a versiones posteriores. De esta forma, es posible la sustitución de una 
+funcionalidad por otra en una versión posterior. 
+La versión se indicará a través de un nuevo atributo opcional en la petición: Version. 
+
+En base al valor que tenga el atributo Version, se aplicarán las funcionalidades que 
+correspondan. En la Respuesta también se devolverá el atributo Version con el mismo valor 
+recibido en la Petición. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+7 
+
+Con el fin de garantizar la compatibilidad hacia atrás de los clientes de servicios web en 
+funcionamiento, si en la petición no se incluye la Version se tratará como una petición no 
+versionada. En ese caso, en la Respuesta no se retorna el atributo Version. 
+En la siguiente tabla se muestran ejemplos de Petición y Respuesta. 
+Petición Respuesta 
+<pet:Peticion> <Respuesta 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version=""> <Respuesta Version="" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version="?"> <Respuesta Version="" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version="3.4.40"> <Respuesta Version="3.4.40" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+En el apartado 6 se detalla la relación de versiones y funcionalidades. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+8 
+3. Mensajes intercambiados funcionamiento Síncrono 
+En los mensajes intercambiados, la estructura de los datos genéricos es común a todos los 
+mensajes, mientras que los datos específicos son particulares del negocio. 
+3.1. Mensaje de Petición 
+La petición está formada por dos ramas de información, la rama definida como Atributos, y 
+la de Solicitudes. La rama Solicitudes contiene las Solicitudes de Transmisión formadas por el 
+bloque DatosGenericos y el bloque DatosEspecíficos. 
+
+Figura 1. Mensaje Petición 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+9 
+3.1.1. Datos Genéricos 
+Descripción de la parte común (rama Atributos y bloque DatosGenericos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Version 10 AN O Atributo Versión. Contiene la versión que aplica en la 
+Petición. 
+Ver apartado 2.7 Versionado de los servicios web 
+Atributos BL R Bloque Único. Contiene los datos de control, relativos 
+a toda la petición. 
+IdPeticion 26 AN R El identificador de petición se formará concatenando 
+el código del organismo asignado por DIR3 y un 
+número secuencial de petición. El sistema no validará 
+si el número de peticiones recibidas es correlativo. 
+Consultar el apartado 'Identificadores de petición' 
+NumElementos 7 N R Funcionamiento síncrono: valor 1 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la petición. 
+Formatos admitidos: 
+DD/MM/AAAA HH:MM:SS 
+AAAA-MM-DDThh:mm:ss.mmm±hh:mm 
+Estado BL O Bloque único. Contiene información sobre la 
+situación de la petición. Tiene sentido en el mensaje 
+de respuesta. 
+CodigoEstado 4 AN O No rellenar 
+CodigoEstadoSecundario 16 AN O No rellenar 
+LiteralError 255 AN O No rellenar 
+TiempoEstimadoRespuesta 4 N O No rellenar 
+CodigoCertificado 64 AN R Identificador del servicio web al que se va a acceder: 
+BDNSCONSULTACV 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+10 
+Solicitudes BL R Bloque único que engloba la lista de solicitudes de 
+transmisión que se envían. 
+Tiene un atributo opcional (Id) para agilizar las 
+búsquedas por referencia en lugar de por Xpath 
+SolicitudTransmision BL R Se repite de 1 a n veces por esquema. Contiene los 
+datos relativos a una solicitud de transmisión. 
+Para el modo síncrono del servicio sólo se admite que 
+aparezca una única vez (sólo se acepta una 
+transmisión/solicitud por petición). 
+DatosGenericos BL R Bloque único. Contiene los datos genéricos sobre una 
+transmisión. 
+Emisor BL R Bloque único. Contiene datos del emisor de la 
+solicitud 
+NifEmisor 10 AN R NIF del emisor. Rellenar con 9 dígitos con el valor 
+'S2826015F' 
+NombreEmisor 50 AN R Nombre del emisor. Rellenar con 'IGAE' 
+Solicitante BL R Bloque único. Contiene datos del solicitante de la 
+transacción. 
+IdentificadorSolicitante 10 AN R Código DIR3 del Organismo que realiza la petición. 
+NombreSolicitante 50 AN R Nombre del Organismo que realiza la petición 
+Finalidad AN O El contenido de este campo se ignora. 
+Consentimiento AN O El contenido de este campo se ignora. 
+Titular BL O Bloque único. El contenido de este bloque se ignora. 
+TipoDocumentacion AN O El contenido de este campo se ignora. 
+Documentacion AN O El contenido de este campo se ignora. 
+Transmision BL R Bloque único. Contiene los datos del certificado que 
+se va a solicitar. 
+CodigoCertificado 64 AN R Identificador del servicio web al que se va a acceder: 
+BDNSCONSULTACV 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+11 
+IdSolicitud 40 AN R En caso de ser intercambio síncrono el identificador 
+de solicitud debe coincidir con el identificador de 
+petición. 
+IdTransmision 29 AN O No rellenar 
+FechaGeneracion 29 AN O No rellenar 
+
+3.1.2. Datos Específicos 
+La estructura de DatosEspecificos recoge los parámetros específicos del negocio. 
+
+Figura 2. Petición - Parte específica 
+Descripción de la parte específica (bloque DatosEspecificos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosEspecificosPeticion BL O Bloque obligatorio en el mensaje de petición 
+DatosGenerales BL R Bloque obligatorio en el mensaje de petición 
+OrganoFecha BL R En el mensaje de petición, se deberá enviar el bloque 
+OrganoFecha o IdConvocatoria 
+OrganoGestor 9 AN R Órgano gestor (codificación DIR3). 
+FechaRecepcionInicio 10 AN O Fecha de inicio de recepción de la convocatoria. 
+Formato AAAA-MM-DD 
+O no se incluye ninguna fecha o es obligatorio incluir 
+ambas. 
+FechaRecepcionFin 10 AN O Fecha de fin de recepción de la convocatoria. 
+Formato AAAA-MM-DD 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+12 
+O no se incluye ninguna fecha o es obligatorio incluir 
+ambas. 
+IdConvocatoria 18 AN R Número para la identificación de la convocatoria 
+anual asignado por la IGAE. 
+DatosEspecificosRespuesta BL O Sin contenido en el mensaje de petición 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+13 
+3.2. Mensaje de Respuesta 
+La respuesta está formada por dos ramas de información, la rama definida como Atributos, 
+y la de Transmisiones. La rama Transmisiones contiene las Transmisiones de Datos formadas 
+por el bloque DatosGenericos y el bloque DatosEspecíficos. 
+
+Figura 3. Mensaje Respuesta 
+3.2.1. Datos Generales 
+Descripción de la parte común (rama Atributos y bloque DatosGenericos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Version 10 AN O Atributo Versión. Contiene la versión que aplica en la 
+Respuesta. 
+Ver apartado 2.7 Versionado de los servicios web 
+Atributos BL R 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+14 
+IdPeticion 26 AN R Valor recibido en el mensaje de petición. 
+NumElementos 7 N R Valor recibido en el mensaje de petición. 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la 
+respuesta con el mismo formato que el recibido en la 
+petición: 
+Formatos admitidos: 
+DD/MM/AAAA HH:MM:SS 
+AAAA-MM-DDThh:mm:ss.mmm±hh:mm. 
+
+Estado BL O Bloque único. Contiene información sobre la 
+situación de la petición. 
+CodigoEstado 4 AN O Código identificativo del estado de la petición 
+Funcionamiento síncrono: Contendrá siempre el valor 
+'0003' (Tramitado). 
+CodigoEstadoSecundario 16 AN O Consultar el apartado 'Gestión de errores' 
+LiteralError 255 AN O Consultar el apartado 'Gestión de errores' 
+TiempoEstimadoRespuesta 4 N O Funcionamiento síncrono: sin contenido 
+
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+Transmisiones BL O 
+TransmisionDatos BL R 
+DatosGenericos BL R 
+Emisor BL R 
+NifEmisor 10 AN R Valor recibido en el mensaje de petición. 
+NombreEmisor 50 AN R Valor recibido en el mensaje de petición. 
+Solicitante BL R 
+IdentificadorSolicitante 10 AN R Valor recibido en el mensaje de petición. 
+NombreSolicitante 50 AN R Valor recibido en el mensaje de petición. 
+Finalidad AN O Sin información 
+Consentimiento AN O Sin información 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+15 
+Titular BL O Sin información 
+TipoDocumentacion AN O Sin información 
+Documentacion AN O Sin información 
+Transmision R 
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+IdSolicitud 40 AN R Valor recibido en el mensaje de petición. 
+IdTransmision 29 AN R Consultar el apartado 'Identificadores de transmisión' 
+FechaGeneracion 29 AN R Indica la fecha en la que se generó la transmisión de 
+datos con formato DD/MM/AAAA hh:mm:ss 
+3.2.2. Datos Específicos 
+La estructura de DatosEspecificos recoge el estado de procesamiento de cada solicitud. 
+
+Figura 4. Respuesta - Parte específica 
+Descripción de la parte específica (bloque DatosEspecificos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+16 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosEspecificosPeticion BL O Sin contenido en el mensaje de respuesta 
+DatosEspecificosRespuesta BL O Bloque obligatorio en el mensaje de respuesta 
+CodigoEstadoSo 4 AN R Consultar el apartado 'Gestión de errores' 
+CodigoEstadoSecundarioSo 16 AN O Consultar el apartado 'Gestión de errores' 
+LiteralErrorSo 255 AN R Consultar el apartado 'Gestión de errores' 
+TodasConvocatorias BL R En el mensaje de respuesta, se recibirá el bloque 
+TodasConvocatorias o el bloque UnaConvocatoria 
+Convocatoria BL R Se repite de 1 a n veces por cada convocatoria 
+encontrada. 
+IdConvocatoria 18 AN R Número para la identificación de la convocatoria 
+anual asignado por la IGAE. 
+FechaRecepcion 10 AN R Fecha de recepción de la convocatoria. 
+Formato AAAA-MM-DD 
+Estado 1 AN R Estado de la convocatoria. Dos valores posibles: 'V' 
+Viva / 'A' Anulada 
+Relacion 1 AN R Relación del órgano gestor con la convocatoria. Dos 
+valores posibles: 'P' Propietario / 'A' Autorizado 
+ReferenciaExterna 50 AN O Referencia interna del gestor para la convocatoria 
+DescripcionCov 255 AN R Descripción de la convocatoria en castellano 
+UnaConvocatoria BL R En el mensaje de respuesta, se recibirá el bloque 
+TodasConvocatorias o el bloque UnaConvocatoria 
+DatosGeneralesCov BL R INFORMACION GENERAL DE LA CONVOCATORIA 
+DatosBaseReguladora BL O INFORMACION DE LAS BASES REGULADORAS 
+DatosSolicitudJustificacionFinanciacion BL O INFORMACION DE LAS SOLICITUDES, JUSTIFICACION Y 
+TIPOS DE FINANCIACION 
+OtrosDatos BL O OTROS DATOS DE LA CONVOCATORIA 
+OtrosDocumentos BL O IDENTIFICACIÓN DEL DOCUMENTO 
+Extractos BL O INFORMACION DEL EXTRACTO EN EL DIARIO OFICIAL 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+17 
+Publicacion BL O INFORMACION DE LA PUBLICACIÓN DEL EXTRACTO 
+EN EL DIARIO OFICIAL 
+Para convocatorias a regularizar o dependientes de 
+órganos no intermediados. 
+
+3.2.2.1. UnaConvocatoria - DatosGeneralesCov 
+
+Figura 5. UnaConvocatoria - DatosGeneralesCov 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosGeneralesCov BL R INFORMACION GENERAL DE LA CONVOCATORIA 
+IdConvocatoria 18 AN R Número para la identificación de la convocatoria 
+anual asignado por la IGAE. 
+FechaRecepcion 10 AN R Fecha de recepción de la convocatoria. 
+Formato AAAA-MM-DD 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+18 
+Estado 1 AN R Estado de la convocatoria. Dos valores posibles: 'V' 
+Viva / 'A' Anulada 
+Propietario BL R Información del propietario de la convocatoria 
+OrganoGestor 9 AN R Órgano gestor (codificación DIR3). 
+DescripcionOrgano 255 AN R Descripción del órgano gestor 
+ReferenciaExterna 50 AN O Referencia interna del gestor para la convocatoria 
+DescripcionCov 255 AN R Descripción de la convocatoria en castellano 
+DocumentoCastellano BL O Información del archivo que contiene el texto 
+completo de la convocatoria en castellano. 
+Nombre 255 AN R Nombre del archivo. 
+Fichero Base6
+4 
+R Archivo que contiene el texto completo de la 
+convocatoria en castellano. 
+TipoDocumento AN R Identifica el tipo de documento en Castellano. Tendrá 
+el valor: 
+'5': 'Documento de la convocatoria en español' 
+DocumentoOtraLengua BL O Información del archivo que contiene el texto 
+completo de la convocatoria en otro idioma. 
+Nombre 255 AN R Nombre del archivo. 
+Fichero Base6
+4 
+R Archivo que contiene el texto completo de la 
+convocatoria en otro idioma. 
+TipoDocumento AN R Identifica el tipo de documento de la convocatoria en 
+otro idioma. Tendrá el valor: 
+'6': 'Documento de la convocatoria en lengua 
+cooficial' 
+OrganosAutorizados BL O Bloque que contiene otros órganos autorizados por el 
+propietario que participarán en la gestión de la 
+convocatoria 
+OrganoAutorizado BL R Bloque que contiene un órgano autorizados por el 
+propietario que participará en la gestión de la 
+convocatoria 
+OrganoGestor 9 AN R Órgano gestor (codificación DIR3). 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+19 
+DescripcionOrgano 255 AN R Descripción del órgano gestor 
+3.2.2.2. UnaConvocatoria - DatosBaseReguladora 
+
+Figura 6. UnaConvocatoria - DatosBaseReguladora 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosBaseReguladora BL O INFORMACION DE LAS BASES REGULADORAS 
+Nomenclatura 50 AN O Nomenclatura de identificación de las bases 
+reguladoras. Texto libre de acuerdo con la 
+nomenclatura utilizada por la Administración 
+correspondiente para la identificación de su 
+normativa. 
+DiarioOficialBR 3 AN O Diario Oficial de las bases reguladoras. Referencia al 
+Diario Oficial de publicación de las bases reguladoras. 
+Valor existente en tabla "DIARIOS OFICIALES". 
+DescripcionBR 255 AN R Descripción de las bases reguladoras. Texto del título 
+de la norma que contiene las bases reguladoras que 
+rigen la Convocatoria. 
+URLEspBR 500 AN R URL de las BBRR en castellano. Enlace al sitio web que 
+contiene el texto completo en castellano de las bases 
+reguladoras. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+20 
+URLengBR 500 AN O URL de las BBRR en segunda lengua oficial. Enlace al 
+sitio web que contiene el texto completo en segunda 
+lengua oficial de las bases reguladoras. 
+3.2.2.3. UnaConvocatoria - DatosSolicitudJustificacionFinanciacion 
+
+Figura 7. UnaConvocatoria - DatosSolicitudJustificacionFinanciacion 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosSolicitudJustificacionFinanciacion BL O INFORMACION DE LAS SOLICITUDES, JUSTIFICACION Y 
+TIPOS DE FINANCIACION 
+Solicitud BL R IDENTIFICACIÓN ASOCIADA A LAS SOLICITUDES 
+Abierto 1 AN R Condición de período de admisión de solicitudes 
+permanentemente abierto. Indica si la convocatoria 
+mantiene permanente abierto el período de admisión 
+de solicitudes. 
+Valores posibles: 
+'0': cerrado 
+'1': abierto 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+21 
+InicioSolicitud 100 AN O Texto del inicio del período de solicitud. Texto 
+explicativo sobre el inicio del período habilitado para 
+admitir solicitudes. 
+FechaInicioSolicitud 10 AN O Fecha de inicio del período habilitado para admitir 
+solicitudes. 
+Formato AAAA-MM-DD 
+FinSolicitud 100 AN O Texto del fin del período de solicitud. Texto 
+explicativo sobre el fin del período habilitado para 
+admitir solicitudes. 
+FechaFinSolicitud 10 AN O Fecha de fin del período habilitado para admitir 
+solicitudes. 
+Formato AAAA-MM-DD 
+Sede 500 AN O Sede electrónica del órgano concedente. Dirección 
+del sitio web para la gestión electrónica de las 
+solicitudes. 
+Justificacion 3 AN R Momento de la justificación de las concesiones. 
+Determina el momento de la justificación de las 
+concesiones de la convocatoria en relación con el 
+momento de su pago. Valor existente en tabla 
+"MOMENTOS JUSTIFICACION". 
+FechaJustificacion 10 AN O Fecha absoluta de fin del plazo de presentación de 
+justificaciones de cualquier concesión. Fecha tope 
+fijada en la normativa como vencimiento del plazo 
+para presentar las justificaciones por parte de los 
+beneficiarios o de las entidades colaboradoras. 
+Formato AAAA-MM-DD 
+TiposFinanciacion BL O INFORMACION DE LOS TIPOS DE FINANCIACION DE LA 
+CONVOCATORIA 
+Financiacion BL R INFORMACION DE UN TIPO DE FINANCIACION 
+TipoFinanciacion 3 AN R Tipo de financiación. 
+Valor existente en tabla "FINANCIACION". 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+22 
+ImporteFinanciacion 18,2 N R Presupuesto máximo para financiar los gastos de la 
+convocatoria. 
+FondosUE BL O INFORMACION DE LOS FONDOS UE 
+CONFINANCIADORES DE LA CONVOCATORIA 
+FondoUE BL R INFORMACION DEL FONDO UE CONFINANCIADORES 
+DE LA CONVOCATORIA 
+TipoFondo 3 AN R Tipo de fondo. 
+Valor existente en tabla "FONDOS". 
+ImporteFondo 18,2 N R Importe cofinanciado con cada uno de los fondos 
+aportados en [TipoFondo]. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+23 
+3.2.2.4. UnaConvocatoria - OtrosDatos 
+
+Figura 8. UnaConvocatoria - OtrosDatos 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+24 
+Nombre Lon Tipo Car Descripción / Comentarios 
+OtrosDatos BL O OTROS DATOS DE LA CONVOCATORIA 
+Sectores BL O INFORMACION DE LAS ACTIVIDADES ECONOMICAS 
+Sector 5 AN R Refleja uno o varios sectores de actividad económica 
+beneficiados por la subvención o la ayuda pública. 
+Valor existente en tabla "SECTOR ECONÓMICO 
+(NACE)". 
+Regiones BL O IDENTIFICACIÓN DE LAS REGIONES GEOGRAFICAS 
+Region 5 AN R Una o varias regiones que se verán beneficiadas por 
+las subvenciones o ayudas convocadas. 
+Valor existente en tabla "REGIONES (NUTS)". 
+AyudaEstado BL O IINFORMACION PARA AYUDAS DE TIPO ADE. 
+AutorizacionADE 5 AN R Tipo de autorización ADE. Mecanismo de autorización 
+de la ayuda. 
+Valor existente en tabla "AUTORIZACION ADE". 
+ReferenciaUE 50 AN O Referencia asignada por la UE como identificador de 
+la Ayuda. 
+En este campo se deben introducir los cinco dígitos 
+numéricos (XXXXX) de referencia asignada por la 
+Comisión Europea (Case Number). 
+Reglamento 3 AN O Reglamento UE de exención de la obligación de 
+notificación previa a la Comisión. 
+Valor existente en tabla "REGLAMENTOS UE 
+EXENCION". 
+SAEXEN 1 N O Aplica a partir de la versión 3.4.40. 
+Reglamentos UE de exención con SA Number 
+prefijado. Aplica solo en aquellos casos que 
+AutorizacionADE = 'CATEG' y el Reglamento sea: 
+? 9- REG (UE) 2022/2472 
+? 10-OTROS DISTINTOS REG (UE) 2022/2472 
+? 11-REG (UE) 2022/2473 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+25 
+Valores posibles: 
+'0': No 
+'1': Sí 
+Objetivos BL O INFORMACION DE OBJETIVOS DEL REGLAMENTO DE 
+EXENCION POR CATEGORIA DE AYUDA 
+Objetivo 3 AN R Uno o varios de los objetivos en el Reglamento 
+aplicable. 
+Valor existente en tabla "OBJETIVOS DEL 
+REGLAMENTO". 
+Instrumentos BL R INSTRUMENTOS DE AYUDA 
+Instrumento 5 AN R Una o varias de las figuras jurídicas o económicas en 
+base a las que se conceden las subvenciones y ayudas. 
+Valor existente en tabla "INSTRUMENTOS DE 
+AYUDA". 
+TiposBeneficiario BL O TIPOS DE BENEFICIARIO 
+TipoBeneficiario 3 AN R Uno o varios de los tipos de beneficiario previstos en 
+la convocatoria. 
+Valor existente en tabla "TIPOS DE TERCERO". 
+Finalidad 2 AN O Objetivo de la subvención o ayuda pública desde el 
+punto de vista de las políticas de gasto. 
+Valor existente en tabla "FINALIDADES". 
+ImpactoGenero 3 AN O Califica el impacto que la subvención o ayuda tiene a 
+efectos de la igualdad de oportunidades y de trato 
+entre mujeres y hombres. 
+Valor existente en tabla "IMPACTO GENERO". 
+ConcesionPublicable 1 AN O Condición de publicidad de las concesiones. Indica si 
+la publicidad de las concesiones de la convocatoria 
+está restringida cuando la publicación de las 
+concesiones de subvenciones o ayudas públicas a 
+personas físicas pueda atentar contra el derecho al 
+honor, a la intimidad personal y familiar y a la propia 
+imagen, en los términos regulados en la Ley Orgánica 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+26 
+1/1982, de 5 de mayo o contra el derecho a la 
+protección de los datos personales regulada en el 
+Reglamento (UE) 2016/679 del Parlamento Europeo y 
+del Consejo, de 27 de abril de 2016, relativo a la 
+protección de las personas físicas en lo que respecta 
+al tratamiento de datos personales y en la Ley 
+Orgánica 3/2018, de 5 de diciembre, de Protección de 
+Datos Personales y garantía de los derechos digitales. 
+Valores posibles '0'/'1'. 
+'0': no publicable 
+'1': si publicable 
+SubvencionNominativa 1 AN O Condición de subvención nominativa. Indica si las 
+concesiones de la convocatoria tienen la naturaleza 
+de subvenciones nominativas. 
+Valores posibles '0'/'1'. 
+'0': no nominativa 
+'1': si nominativa 
+TipoConvocatoria 1 AN O Tipo de convocatoria: 
+'0': Instrumental 
+'1': Canónica 
+ProcedimientoConcesion 1 AN O Procedimiento de concesión: 
+'1': Directa 
+'2': Competitiva. 
+DescripcionLeng 255 AN O Descripción/Título en lengua cooficial. 
+Porcentaje 3 N O Porcentaje de cofinanciación. 
+Contribucion 1 AN O Permite registrar contribuciones, obligatorias o 
+voluntarias, y aportaciones económicas efectuadas a 
+organismos, programas, fondos o entidades de 
+carácter internacional. 
+Se informará este campo cuando TipoConvocatoria: 0 
+y ProcedimientoConcesion: D 
+'0': No 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+27 
+'1': Si 
+Desierta 1 AN O Convocatoria desierta: 
+'0': No 
+'1': Si 
+Regularizar 1 AN O Convocatoria a regularizar. 
+Permite identificar convocatorias que no fueron 
+registradas en su momento en la BDNS, pero que sí 
+fueron publicadas en el diario oficial competente, por 
+ser anteriores a 2016 o por incurrir en situaciones 
+especiales. 
+Valores posibles: 
+'0': No 
+'1': Si 
+SectorProductos 2 AN O Código del Sector de productos agrícolas. 
+Se informa cuando tiene marcada la Ayuda de Estado 
+y tipo de autorización AdE: MINIMIS, con el 
+reglamento REG(UE) 1408/2013, DE 18 DE 
+DICIEMBRE, de minimis. 
+Basado en el catálogo de BDNS_SECTORESAGRI 
+Anulada 1 AN O Permite indicar si la convocatoria ha sido anulada. 
+Valores posibles: 
+'0': No 
+'1': Si 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+28 
+3.2.2.5. UnaConvocatoria - OtrosDocumentos 
+
+Figura 9. UnaConvocatoria - OtrosDocumentos 
+Nombre Lon Tipo Car Descripción / Comentarios 
+OtrosDocumentos BL O IDENTIFICACIÓN DEL DOCUMENTO 
+OtroDocumento BL O IDENTIFICACIÓN DEL DOCUMENTO 
+DescripcionOtro 255 AN R Descripción del documento. 
+Nombre 255 AN R Nombre del archivo. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Fichero Base6
+4 
+R Archivo. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Máximo tamaño permitido: 5.242.880 bytes 
+TipoDocumento AN R Identifica el tipo de documento adjunto. 
+Valor existente en tabla "TIPO DOCUMENTO". 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+29 
+3.2.2.6. UnaConvocatoria - Extractos 
+
+Figura 10. UnaConvocatoria - Extractos 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Extractos BL O INFORMACION DEL EXTRACTO EN EL DIARIO OFICIAL 
+Extracto BL R 
+DiarioOficial 3 AN R Diario oficial de publicación del extracto. Valor 
+existente en tabla "DIARIOS OFICIALES". 
+TextoExtractoCastellano BL R Texto del extracto en castellano. Texto en castellano 
+del contenido del extracto que se pondrá a 
+disposición del Diario Oficial correspondiente. 
+Se compondrá de párrafos 
+P - AN R Cada uno de los párrafos del texto del extracto. 
+PieFirmaExtracto BL R INFORMACION DE LA FECHA, LUGAR Y FIRMANTE DEL 
+EXTRACTO. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+30 
+FechaFirma 10 AN R Fecha del pie de firma de la convocatoria en 
+castellano. 
+LugarFirma 200 AN R Localidad del pie de firma de la convocatoria en 
+castellano 
+Firmante 500 AN R Nombre y cargo del pie de firma de la convocatoria en 
+castellano 
+ExtractoOtraLengua BL O IDENTIFICACIÓN DEL EXTRACTO EN LA SEGUNDA 
+LENGUA OFICIAL 
+TituloExtracto 500 AN R Título en la segunda lengua oficial del extracto. Título 
+del extracto que se pondrá a disposición del Diario 
+Oficial correspondiente. Se compondrá según la guía 
+de estilo. 
+TextoExtractoOtraLengua BL R Texto del extracto en la segunda lengua oficial. Texto 
+en la segunda lengua oficial del contenido del 
+extracto que se pondrá a disposición del Diario Oficial 
+correspondiente. 
+Se compondrá de párrafos 
+P - AN R Cada uno de los párrafos del texto del extracto. 
+PieFirmaExtracto BL R INFORMACION DE LA FECHA, LUGAR Y FIRMANTE DEL 
+EXTRACTO. 
+FechaFirma 10 AN R Fecha del pie de firma de la convocatoria en la 
+segunda lengua oficial. 
+LugarFirma 200 AN R Localidad del pie de firma de la convocatoria en la 
+segunda lengua oficial 
+Firmante 500 AN R Nombre y cargo del pie de firma de la convocatoria en 
+la segunda lengua oficial 
+LenguaCooficial 3 AN R Indica la lengua cooficial de extracto. 
+Valor existente en tabla "LENGUA COOFICIAL". 
+FechaEnvio 10 AN O Fecha de envío del extracto al Diario Oficial. 
+Publicacion BL O INFORMACION DE LA PUBLICACIÓN DEL EXTRACTO 
+EN EL DIARIO OFICIAL 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+31 
+IdExtractoDiarioOficial 255 AN O Identificación del extracto otorgado por el Diario 
+Oficial 
+EstadoPublicacion BL R INFORMACION DEL ESTADO DE PUBLICACIÓN DEL 
+EXTRACTO. 
+Publicado BL R Un extracto puede ser publicado/rechazado por un 
+Diario Oficial. Se incluirá el bloque Publicado o el 
+bloque Rechazado 
+FechaPublicacion 10 AN R Fecha de publicación del extracto comunicada por el 
+Diario Oficial. 
+CVE 255 AN O Código de verificación electrónica del extracto 
+comunicado por el Diario Oficial. 
+URL 500 AN O URL de publicación del extracto comunicado por el 
+Diario Oficial. 
+Rechazado BL R Un extracto puede ser publicado/rechazado por un 
+Diario Oficial. Se incluirá el bloque Publicado o el 
+bloque Rechazado 
+FechaRechazo 10 AN R Fecha de rechazo del extracto comunicada por el 
+Diario Oficial. 
+Observaciones 500 AN R Motivo de rechazo del extracto comunicado por el 
+Diario Oficial. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+32 
+3.2.2.7. UnaConvocatoria - Publicacion 
+
+Figura 11. UnaConvocatoria - Publicacion 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Publicacion BL O INFORMACION DE LA PUBLICACIÓN DEL EXTRACTO 
+EN EL DIARIO OFICIAL 
+Para convocatorias a regularizar o dependientes de 
+órganos no intermediados. 
+FechaEnvio 10 AN O Fecha de publicación del extracto en el Diario Oficial. 
+URL 500 AN O URL de publicación del extracto comunicado por el 
+Diario Oficial. 
+EstadoPublicacion 1 AN R Estado Publicación: 
+'0': Publicada 
+'1': Pendiente de Publicación 
+DiarioOficial 3 AN O Diario oficial de publicación del extracto. Referencia al 
+Diario Oficial al que se ha enviado el extracto de la 
+convocatoria para su publicación. 
+Valor existente en tabla "DIARIOS OFICIALES". 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+33 
+3.3. Mensaje SOAP Fault 
+Se devolverá un mensaje SOAP Fault cuando el error detectado pertenezca a alguno de los 
+siguientes tipos: 
+? Error de conexión a la base de datos. 
+? Error de conexión a sistemas externos (@Firma, CICS, Servidores Externos, etc.). 
+? Error en la validación de esquemas (o petición recibida sin firma). 
+? Error por Validación de la Firma digital. 
+? Petición no firmada. 
+? Certificado caducado, revocado o no válido. 
+? Error del Sistema Interno en el tratamiento de la petición. 
+Los mensajes SOAP Fault irán firmados como el resto de mensajes. 
+En los campos faultcode y faultstring del mensaje SOAP Fault, se enviarán los códigos y 
+mensajes de error definidos en el punto Gestión de Errores. 
+En caso de errores "incontrolados", se devolverá un error genérico del tipo 
+<faultcode>soapenv:Client.FRACC.GEX.TEC.992</faultcode> 
+<faultstring>Ocurrió un problema en el funcionamiento del sistema. Por favor, 
+contacte con el administrador del sistema para solucionarlo.</faultstring> 
+
+Figura 12. Mensaje SOAP Fault 
+Descripción del mensaje SOAP Fault: 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+34 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Atributos BL R Valor recibido en el mensaje de petición. 
+IdPeticion 26 AN R Valor recibido en el mensaje de petición. 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la petición. 
+Formato "DD/MM/AAAA HH:MM:SS". 
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+35 
+4. Gestión de errores 
+4.1. Errores devueltos mediante el esquema SOAP Fault. 
+faultcode faultstring 
+0201 Error al generar el identificativo de petición 
+0229 La petición ya ha sido tramitada o ya existe en el sistema, está repetida 
+0230 El timestamp de la petición debe ser válido y de hoy o de ayer. {1} 
+0234 {1}. No se ha encontrado en base de datos configuración alguna para algún certificado 
+asociado al código pasado por parámetro. 
+0237 Tag NumElementos incorrecto. {1} 
+0252 Contenido incorrecto <NombreCampo> <Valor> 
+0301 Organismo no autorizado {1} {2} 
+0398 Servicio no disponible en modo asíncrono 
+0399 El usuario de acceso al servicio web {1} no corresponde al usuario autorizado para el 
+organismo {2} 
+0401 La estructura del fichero recibido no corresponde con el esquema. Falta tag obligatorio 
+<NombreCampo> 
+0402 Falta informar campo obligatorio <NombreCampo> 
+0414 El número de elementos no coincide con el número de solicitudes recibidas. {1} 
+0415 El número de solicitudes es mayor que uno. Ejecute el servicio en modo asíncrono. 
+0417 En una comunicación síncrona el identificador de Petición y el identificador de Solicitud 
+deben ser iguales 
+0497 La petición debe incluir un único filtro de consulta: OrganoFecha / IdConvocatoria 
+0499 Contenido improcedente {1} 
+0501 Error de Base de Datos: {1} 
+0502 Error de sistema: {1} 
+0503 Error al obtener la respuesta o el resultado del servicio del Backoffice 
+0513 Problemas al registrar la respuesta 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+36 
+4.2. Errores funcionales devueltos por el servicio 
+
+Código 
+Estado 
+Literal Error 
+1000 Solicitud correcta 
+1021 La convocatoria no existe en BDNS 
+1325 No existe ninguna convocatoria para el órgano gestor 
+1326 La fecha fin de recepción debe ser posterior a la fecha de inicio. 
+4100 La versión no existe en BDNS 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+37 
+5. Ejemplos de mensajes 
+En el siguiente enlace se incluyen ejemplos de los distintos mensajes explicados en el 
+documento: 
+https://www.oficinavirtual.pap.hacienda.gob.es/sitios/oficinavirtual/es-
+ES/CatalogoSistemasInformacion/TESEOnet/Documents/EjemplosXML.zip 
+Especificaciones del Servicio Web de Consulta de Convocatorias 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+38 
+6. Versiones y funcionalidades 
+Descripción de la Funcionalidad Servicio Web Versión 
+F1. Si AutorizacionADE es CATEG y Reglamento es 9, 10 o 11, se 
+devuelven en la Respuesta el campo SAExen (Vacío, 0 o 1) 
+BDNSCONSULTACV 3.4.40 

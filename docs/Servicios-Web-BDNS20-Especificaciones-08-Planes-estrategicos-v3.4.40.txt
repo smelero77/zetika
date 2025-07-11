@@ -1,0 +1,575 @@
+
+
+
+
+
+
+
+SERVICIO WEB PLANES ESTRATÉGICOS 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+1 
+ÍNDICE 
+Control Documental .............................................................................................. 2 
+1. Introducción .................................................................................................. 3 
+2. Descripción del Servicio Web de Planes estratégicos ............................... 4 
+2.1. Modos de funcionamiento .................................................................... 4 
+2.2. Órgano solicitante y Órgano Gestor .................................................... 5 
+2.3. Identificadores de petición ................................................................... 5 
+2.4. Identificadores de solicitud .................................................................. 6 
+2.5. Identificadores de transmisión ............................................................. 6 
+2.6. SOAP Fault ............................................................................................. 6 
+2.7. Versionado de los servicios web .......................................................... 6 
+2.8. Particularidades del servicio web de Planes estratégicos. ................ 7 
+3. Mensajes intercambiados funcionamiento Síncrono ................................. 9 
+3.1. Mensaje de Petición .............................................................................. 9 
+3.1.1. Datos Genéricos ............................................................................................ 10 
+3.1.2. Datos Específicos .......................................................................................... 12 
+3.1.2.1. PlanEstrategico - DatosGeneralesPES ................................................. 14 
+3.1.2.2. PlanEstrategico - DocumentoCastellano ............................................. 15 
+3.1.2.3. PlanEstrategico - DocumentoOtraLengua ........................................... 16 
+3.1.2.4. PlanEstrategico - OtrosDocumentos .................................................... 17 
+3.2. Mensaje de Respuesta ........................................................................ 18 
+3.2.1. Datos Genéricos ............................................................................................ 18 
+3.2.2. Datos Específicos .......................................................................................... 20 
+3.3. Mensaje SOAP Fault ............................................................................ 21 
+4. Gestión de errores ...................................................................................... 23 
+4.1. Errores devueltos mediante el esquema SOAP Fault ....................... 23 
+4.2. Errores funcionales devueltos por el servicio ................................... 24 
+5. Ejemplos de mensajes ............................................................................... 25 
+6. Versiones y funcionalidades...................................................................... 26 
+
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+2 
+Control Documental 
+FECHA VERSIÓN CAMBIOS REALIZADOS 
+27/07/2022 4.0 Especificación inicial 
+24/07/2023 3.4.39 Se revisa el esquema para que el campo DescripcionLeng sea opcional 
+30/08/2023 3.4.40 Nuevo atributo opcional Version en Peticion y Respuesta: 
+2.7 Versionado de los servicios web 
+Se añade nuevo código de error 4100. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+3 
+1. Introducción 
+La Base de Datos Nacional de Subvenciones (BDNS) contiene información sobre la 
+normativa aplicable y los procedimientos de gestión y de reintegro de las subvenciones 
+concedidas, así como la relativa a algunas prohibiciones para obtener la condición de 
+beneficiario. 
+Esta información es aportada a la base de datos bajo la exclusiva responsabilidad de los 
+órganos gestores de las subvenciones y está custodiada por la Intervención General de la 
+Administración del Estado. Para poder enviar esta información, se han desarrollado un conjunto 
+de servicios web. 
+Para obtener una visión global sobre la descripción, requisitos y características de los 
+servicios web de remisión de información que ofrece la BDNS, por favor consultar el documento 
+"Especificaciones Genéricas WS". 
+El presente documento recoge las especificaciones técnicas del servicio web PLANES 
+ESTRATÉGICOS (BDNSPES). 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+4 
+2. Descripción del Servicio Web de Planes estratégicos 
+Este servicio permite al requirente (órgano obligado a facilitar información sobre las 
+subvenciones que se conceden), el envío de información relativa a planes estratégicos de 
+subvenciones, a sus actualizaciones, a los informes de grado de avance y a los resultados de 
+evaluación. 
+2.1. Modos de funcionamiento 
+Todos los servicios web definidos para el suministro/consulta de información a la BDNS se 
+han implementado en modo síncrono, ampliándose su funcionalidad en algunos de ellos para 
+que admita funcionamiento asíncrono. 
+En el modo síncrono se intercambian dos mensajes, Petición y Respuesta, de forma que un 
+requirente realiza una petición al servicio deseado y permanece a la espera de la respuesta. El 
+intercambio de mensajes será el siguiente: 
+
+Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición 
+síncrona sólo admite una única solicitud de transmisión dentro de cada petición. 
+En el modo asíncrono se intercambian los mensajes Peticion, ConfirmacionPeticion, 
+SolicitudRespuesta y Respuesta. El requirente realiza una petición (con una o más solicitudes) 
+sin necesidad de permanecer a la espera de la respuesta. 
+
+Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición 
+asíncrona podrá tener tantas solicitudes como soporte el servicio. Cada respuesta tendrá tantas 
+transmisiones como solicitudes haya recibido. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+5 
+La funcionalidad del servicio web debe abarcar el alta, modificación y baja de planes 
+estratégicos. 
+
+2.2. Órgano solicitante y Órgano Gestor 
+Es importante distinguir entre el Órgano solicitante y el Órgano gestor. 
+Como Órgano solicitante se entiende aquel órgano que va a hacer uso del servicio web para 
+la remisión/consulta de información. Este órgano se deberá identificar mediante su código DIR3 
+en el bloque Solicitante dentro de los mensajes Petición y Respuesta. 
+En los servicios web de remisión de información, el Órgano solicitante, en el caso de 
+administración autonómica o local, podrá enviar información de los órganos gestores 
+dependientes de él. Como órgano gestor se entiende aquel órgano responsable de la concesión 
+de subvenciones. Se identificará con su código DIR3, dentro del bloque DatosEspecificos. 
+2.3. Identificadores de petición 
+Una petición está identificada con un ID único (IdPeticion) que la IGAE validará que no esté 
+repetido, lo cual permitirá realizar una trazabilidad de las peticiones recibidas. Para garantizar 
+la unicidad de los identificadores de petición para todos los organismos requirentes del servicio, 
+este identificador deberá tener una parte que identifique unívocamente al organismo. Por ello 
+el identificador de petición deberá incluir el código del organismo asignado por DIR3 (ej: 
+CodDIR3 + '-' + numPeticion). 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+6 
+2.4. Identificadores de solicitud 
+Dentro de cada petición, podrán ir una o más solicitudes que deben poder identificarse de 
+forma única. La forma de asignar esta identificación (IdSolicitud) es: 
+? En el caso de peticiones síncronas solo habrá una solicitud y por tanto su 
+identificador debe de coincidir con el identificador de petición. 
+? En el caso de peticiones asíncronas, se definirá un número máximo de solicitudes 
+permitidas. El identificador será un número secuencial de solicitud. 
+2.5. Identificadores de transmisión 
+En la petición, dentro de cada solicitud, este valor será nulo. En la respuesta, para garantizar 
+los mecanismos de auditoría y trazabilidad, la IGAE generará un Identificador único de cada 
+transmisión realizada por él. Este identificador único se podrá usar a modo de "Código Seguro 
+de Verificación" o referencia de la transmisión realizada y podrá ser verificada por los órganos 
+de fiscalización, control y auditoría correspondientes. 
+2.6. SOAP Fault 
+Algunos de los errores que se puedan generar durante la utilización del servicio se 
+transmitirán utilizando el estándar SOAP Fault. Es decir, si alguna solicitud provoca un error 
+SOAP Fault entonces únicamente se devuelve este objeto, no un mensaje de respuesta. 
+2.7. Versionado de los servicios web 
+A partir de la versión 3.4.40 se introduce el versionado de los servicios web. Para facilitar a 
+los integradores la adopción de nuevas funcionalidades y así adaptarse a los cambios 
+normativos, se propone un esquema de versiones y funcionalidades. Una versión estará 
+compuesta por una o más funcionalidades, y una funcionalidad podrá estar asignada a una o 
+varias versiones. En cada versión se indicarán todas funcionalidades que aplican, no 
+heredándose por defecto a versiones posteriores. De esta forma, es posible la sustitución de una 
+funcionalidad por otra en una versión posterior. 
+La versión se indicará a través de un nuevo atributo opcional en la petición: Version. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+7 
+
+En base al valor que tenga el atributo Version, se aplicarán las funcionalidades que 
+correspondan. En la Respuesta también se devolverá el atributo Version con el mismo valor 
+recibido en la Petición. 
+
+Con el fin de garantizar la compatibilidad hacia atrás de los clientes de servicios web en 
+funcionamiento, si en la petición no se incluye la Version se tratará como una petición no 
+versionada. En ese caso, en la Respuesta no se retorna el atributo Version. 
+En la siguiente tabla se muestran ejemplos de Petición y Respuesta. 
+Petición Respuesta 
+<pet:Peticion> <Respuesta 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version=""> <Respuesta Version="" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version="?"> <Respuesta Version="" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+<pet:Peticion Version="3.4.40"> <Respuesta Version="3.4.40" 
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"> 
+En el apartado 6 se detalla la relación de funcionalidades y versiones. 
+2.8. Particularidades del servicio web de Planes estratégicos. 
+Conviene aclarar el comportamiento del servicio, en función del tipo de movimiento (alta y 
+modificación), para el bloque de información 'Documentos' de un plan estratégico. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+8 
+ALTA: 
+- Se incorpora un documento en cada bloque 'DocumentoCastellano', 
+'DocumentoOtraLengua' y 'OtroDocumento' incluido en el bloque 'PlanEstrategico'. 
+
+MODIFICACION: 
+- Se eliminan todos los documentos existentes en el plan estratégico y se incorporan 
+los que incluya el mensaje de modificación. Por ese motivo, un movimiento de 
+Modificación debe incluir siempre todos los documentos del plan estratégico, no 
+sólo los nuevos. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+9 
+3. Mensajes intercambiados funcionamiento Síncrono 
+En los mensajes intercambiados, la estructura de los datos genéricos es común a todos los 
+mensajes, mientras que los datos específicos son particulares del negocio. 
+3.1. Mensaje de Petición 
+La petición está formada por dos ramas de información, la rama definida como Atributos, y 
+la de Solicitudes. La rama Solicitudes contiene las Solicitudes de Transmisión formadas por el 
+bloque DatosGenericos y el bloque DatosEspecíficos. 
+
+Figura 1. Mensaje Petición 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+10 
+3.1.1. Datos Genéricos 
+Descripción de la parte común (rama Atributos y bloque DatosGenericos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Version 10 AN O Atributo Versión. Contiene la versión que aplica en la 
+Petición. 
+Ver apartado 2.7 Versionado de los servicios web 
+Atributos BL R Bloque Único. Contiene los datos de control, relativos 
+a toda la petición. 
+IdPeticion 26 AN R El identificador de petición se formará concatenando 
+el código del organismo asignado por DIR3 y un 
+número secuencial de petición. El sistema no validará 
+si el número de peticiones recibidas es correlativo. 
+Consultar el apartado 'Identificadores de petición' 
+NumElementos 7 N R En el funcionamiento síncrono tendrá el valor 1 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la petición. 
+Formatos admitidos: 
+DD/MM/AAAA HH:MM:SS 
+AAAA-MM-DDThh:mm:ss.mmm±hh:mm 
+Estado BL O Bloque único. Contiene información sobre la 
+situación de la petición. Tiene sentido en el mensaje 
+de respuesta. 
+CodigoEstado 4 AN O No rellenar 
+CodigoEstadoSecundario 16 AN O No rellenar 
+LiteralError 255 AN O No rellenar 
+TiempoEstimadoRespuesta 4 N O No rellenar 
+CodigoCertificado 64 AN R Identificador del servicio web al que se va a acceder: 
+BDNSPES 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+11 
+Solicitudes BL R Bloque único que engloba la lista de solicitudes de 
+transmisión que se envían. 
+Tiene un atributo opcional (Id) para agilizar las 
+búsquedas por referencia en lugar de por Xpath 
+SolicitudTransmision BL R Se repite de 1 a n veces por esquema. Contiene los 
+datos relativos a una solicitud de transmisión. 
+Para el modo síncrono del servicio sólo se admite que 
+aparezca una única vez (sólo se acepta una 
+transmisión/solicitud por petición). 
+DatosGenericos BL R Bloque único. Contiene los datos genéricos sobre una 
+transmisión. 
+Emisor BL R Bloque único. Contiene datos del emisor de la 
+solicitud 
+NifEmisor 10 AN R NIF del emisor. Rellenar con 9 dígitos con el valor 
+'S2826015F' 
+NombreEmisor 50 AN R Nombre del emisor. Rellenar con 'IGAE' 
+Solicitante BL R Bloque único. Contiene datos del solicitante de la 
+transacción. 
+IdentificadorSolicitante 10 AN R Código DIR3 del Organismo que realiza la petición. 
+NombreSolicitante 50 AN R Nombre del Organismo que realiza la petición 
+Finalidad AN O El contenido de este campo se ignora. 
+Consentimiento AN O El contenido de este campo se ignora. 
+Titular BL O Bloque único. El contenido de este bloque se ignora. 
+TipoDocumentacion AN O El contenido de este campo se ignora. 
+Documentacion AN O El contenido de este campo se ignora. 
+Transmision BL R Bloque único. Contiene los datos del certificado que 
+se va a solicitar. 
+CodigoCertificado 64 AN R Identificador del servicio web al que se va a acceder: 
+BDNSPES 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+12 
+IdSolicitud 40 AN R En caso de ser intercambio síncrono el identificador 
+de solicitud debe coincidir con el identificador de 
+petición. 
+IdTransmision 29 AN O No rellenar 
+FechaGeneracion 29 AN O No rellenar 
+
+3.1.2. Datos Específicos 
+La estructura de DatosEspecificos recoge los parámetros específicos del negocio. 
+
+Figura 2. Petición - Parte específica 
+Descripción de la parte específica (bloque DatosEspecificos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosEspecificosPeticion BL O Bloque obligatorio en el mensaje de petición 
+DatosGenerales BL R Bloque obligatorio en el mensaje de petición 
+OrganoGestor 9 AN R Órgano gestor (codificación DIR3). 
+TipoMovimiento 1 AN R Valores: 
+A: para realizar alta de un plan estratégico 
+B: para realizar la baja de un plan estratégico 
+M: para realizar la modificación de un plan 
+estratégico 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+13 
+PlanEstrategico BL R Bloque obligatorio en el mensaje de petición. 
+IdPlanEstrategico 18 AN O Número para la identificación del Plan Estratégico 
+asignado por la IGAE. 
+Será obligatorio informar este valor en los 
+movimientos de Modificación y Baja. 
+DatosGeneralesPES BL R Contiene información del plan estratégico 
+Requerido en el método de alta y modificación. 
+Sin contenido en método de baja. 
+DocumentoCastellano BL R Información del archivo que contiene el plan 
+estratégico en castellano. 
+Ver apartado 2.8 Particularidades del servicio web 
+de Planes estratégicos. 
+DocumentoOtraLengua BL O Información del archivo que contiene el plan 
+estratégico en otro idioma. 
+Ver apartado 2.8 Particularidades del servicio web 
+de Planes estratégicos. 
+OtrosDocumentos BL O Información de otros archivos que contienen 
+información sobre el plan estratégico. 
+Ver apartado 2.8 Particularidades del servicio web 
+de Planes estratégicos. 
+DatosEspecificosRespuesta BL O Sin contenido en el mensaje de petición 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+14 
+3.1.2.1. PlanEstrategico - DatosGeneralesPES 
+
+Figura 3. PlanEstrategico - DatosGeneralesPES 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosGeneralesPES BL R Contiene información del plan estratégico 
+Requerido en el método de alta y modificación. 
+Sin contenido en método de baja. 
+Descripcion 1000 AN R Breve descripción del PES 
+DescripcionLeng 1000 AN O Breve descripción del PES en una lengua cooficial. 
+TipoPES N R Tipo de plan estratégico. 
+Valor existente en tabla "Tipo Plan Estratégico". 
+VigenciaDesde N R Periodo de inicio de la vigencia del Plan estratégico. 
+Formato: YYYY. 
+Se validará que el valor se encuentre entre AñoActual 
+- 5 y AñoActual + 10 
+VigenciaHasta N R Periodo de fin de la vigencia del Plan estratégico. 
+Formato: YYYY. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+15 
+Se validará que el valor se encuentre entre AñoActual 
+- 2 y AñoActual + 14. Se comprueba que 
+VigenciaDesde < VigenciaHasta 
+FechaAprobacion AN R Fecha de aprobación del plan estratégico. 
+Formato: YYYY-MM-DD 
+Ambito BL R Información sobre el ámbito del Plan estratégico 
+DIR3 9 AN R Código DIR3 del ámbito subjetivo del PES 
+3.1.2.2. PlanEstrategico - DocumentoCastellano 
+
+Figura 4. PlanEstrategico - DocumentoCastellano 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DocumentoCastellano BL R Información del archivo que contiene el plan 
+estratégico en castellano. 
+Nombre 255 AN R Nombre del archivo. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Fichero Base6
+4 
+R Archivo que contiene el texto completo de la 
+convocatoria en castellano. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Máximo tamaño permitido: 5.242.880 bytes 
+TipoDocumento N R Identifica el tipo de documento en Castellano. 
+Valor existente en tabla "Tipo documento". 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+16 
+3.1.2.3. PlanEstrategico - DocumentoOtraLengua 
+
+Figura 5. PlanEstrategico - DocumentoOtraLengua 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DocumentoOtraLengua BL O Información del archivo que contiene el plan 
+estratégico en otro idioma. 
+Nombre 255 AN R Nombre del archivo. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Fichero Base6
+4 
+R Archivo que contiene el texto completo de la 
+convocatoria en castellano. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Máximo tamaño permitido: 5.242.880 bytes 
+TipoDocumento N R Identifica el tipo de documento en Castellano. 
+Valor existente en tabla "Tipo documento". 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+17 
+3.1.2.4. PlanEstrategico - OtrosDocumentos 
+
+Figura 6. PlanEstrategico - OtrosDocumentos 
+Nombre Lon Tipo Car Descripción / Comentarios 
+OtrosDocumentos BL O Información de otros archivos que contienen 
+información sobre el plan estratégico. 
+OtroDocumento BL R Información del documento que contiene información 
+anexa sobre el plan estratégico. 
+TipoDocumento N R Identifica el tipo de documento en Castellano. 
+Valor existente en tabla "Tipo de documento". 
+Ejercicio N R Año natural en que se emite el documento. 
+Se indicará con el formato: YYYY. 
+Se validará que el valor se encuentre entre AñoActual 
+- 5 y AñoActual + 10 
+DescripcionOtro 255 AN O Texto libre que debe contener una breve descripción 
+sobre el documento a adjuntar 
+Nombre 255 AN R Nombre del archivo. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Fichero Base6
+4 
+R Archivo que contiene el texto completo de la 
+convocatoria en castellano. 
+Extensiones del fichero permitidas: PDF y DOCX 
+Máximo tamaño permitido: 5.242.880 bytes 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+18 
+3.2. Mensaje de Respuesta 
+La respuesta está formada por dos ramas de información, la rama definida como Atributos, 
+y la de Transmisiones. La rama Transmisiones contiene las Transmisiones de Datos formadas 
+por el bloque DatosGenericos y el bloque DatosEspecíficos. 
+
+Figura 7. Mensaje Respuesta 
+3.2.1. Datos Genéricos 
+Descripción de la parte común (rama Atributos y bloque DatosGenericos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Version 10 AN O Atributo Versión. Contiene la versión que aplica en la 
+Respuesta. 
+Ver apartado 2.7 Versionado de los servicios web 
+Atributos BL R 
+IdPeticion 26 AN R Valor recibido en el mensaje de petición. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+19 
+NumElementos 7 N R Valor recibido en el mensaje de petición. 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la 
+respuesta con el mismo formato que el recibido en la 
+petición: 
+Formatos admitidos: 
+DD/MM/AAAA HH:MM:SS 
+AAAA-MM-DDThh:mm:ss.mmm±hh:mm. 
+Estado BL O Bloque único. Contiene información sobre la 
+situación de la petición. 
+CodigoEstado 4 AN O Código identificativo del estado de la petición 
+Funcionamiento síncrono: Contendrá siempre el valor 
+'0003' (Tramitado). 
+CodigoEstadoSecundario 16 AN O Consultar el apartado 'Gestión de errores' 
+LiteralError 255 AN O Consultar el apartado 'Gestión de errores' 
+TiempoEstimadoRespuesta 4 N O Funcionamiento síncrono: sin contenido 
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+Transmisiones BL O 
+TransmisionDatos BL R 
+DatosGenericos BL R 
+Emisor BL R 
+NifEmisor 10 AN R Valor recibido en el mensaje de petición. 
+NombreEmisor 50 AN R Valor recibido en el mensaje de petición. 
+Solicitante BL R 
+IdentificadorSolicitante 10 AN R Valor recibido en el mensaje de petición. 
+NombreSolicitante 50 AN R Valor recibido en el mensaje de petición. 
+Finalidad AN O Sin información 
+Consentimiento AN O Sin información 
+Titular BL O Sin información 
+TipoDocumentacion AN O Sin información 
+Documentacion AN O Sin información 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+20 
+Transmision R 
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+IdSolicitud 40 AN R Valor recibido en el mensaje de petición. 
+IdTransmision 29 AN R Consultar el apartado 'Identificadores de transmisión' 
+FechaGeneracion 29 AN R Indica la fecha en la que se generó la transmisión de 
+datos con formato DD-MM-AAAA HH:MM:SS 
+3.2.2. Datos Específicos 
+La estructura de DatosEspecificos recoge el estado de procesamiento de cada solicitud. 
+
+Figura 8. Respuesta - Parte específica 
+Descripción de la parte específica (bloque DatosEspecificos): 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Nombre Lon Tipo Car Descripción / Comentarios 
+DatosEspecificosPeticion BL O Sin contenido en el mensaje de respuesta 
+DatosEspecificosRespuesta BL O Bloque obligatorio en el mensaje de respuesta 
+IdPlanEstratégico 50 AN R En Alta: Valor generado por la BDNS al realizar el alta 
+del plan estratégico. 
+En Modificación y Baja: Valor recibido en el mensaje 
+de petición. 
+CodigoEstadoSo 4 AN R Consultar el apartado 'Gestión de errores' 
+CodigoEstadoSecundarioSo 16 AN O Consultar el apartado 'Gestión de errores' 
+LiteralErrorSo 255 AN R Consultar el apartado 'Gestión de errores' 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+21 
+3.3. Mensaje SOAP Fault 
+Se devolverá un mensaje SOAP Fault cuando el error detectado pertenezca a alguno de los 
+siguientes tipos: 
+? Error de conexión a la base de datos. 
+? Error de conexión a sistemas externos (@Firma, Servidores Externos, etc.). 
+? Error en la validación de esquemas (o petición recibida sin firma). 
+? Error por Validación de la Firma digital. 
+? Petición no firmada. 
+? Certificado caducado, revocado o no válido. 
+? Error del Sistema Interno en el tratamiento de la petición. 
+Los mensajes SOAP Fault irán firmados como el resto de mensajes. 
+En los campos faultcode y faultstring del mensaje SOAP Fault, se enviarán los códigos y 
+mensajes de error definidos en el punto Gestión de Errores. 
+En caso de errores "incontrolados", se devolverá un error genérico del tipo 
+<faultcode>soapenv:Client.FRACC.GEX.TEC.992</faultcode> 
+<faultstring>Ocurrió un problema en el funcionamiento del sistema. Por favor, contacte 
+con el administrador del sistema para solucionarlo. </faultstring> 
+
+Figura 9. Mensaje SOAP Fault 
+Descripción del mensaje SOAP Fault: 
+Tipo AN: alfanumérico, N: numérico, BL: Bloque 
+Carácter R: requerido, O: opcional 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+22 
+Nombre Lon Tipo Car Descripción / Comentarios 
+Atributos BL R Valor recibido en el mensaje de petición. 
+IdPeticion 26 AN R Valor recibido en el mensaje de petición. 
+Timestamp 29 AN R Marca de tiempo en la que se ha realizado la 
+respuesta. Formato "DD/MM/AAAA HH:MM:SS". 
+CodigoCertificado 64 AN R Valor recibido en el mensaje de petición. 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+23 
+4. Gestión de errores 
+4.1. Errores devueltos mediante el esquema SOAP Fault 
+
+faultcode faultstring 
+0201 Error al generar el identificativo de petición 
+0229 La petición ya ha sido tramitada o ya existe en el sistema, está repetida 
+0230 El timestamp de la petición debe ser válido y de hoy o de ayer. {1} 
+0234 {1}. No se ha encontrado en base de datos configuración alguna para algún certificado 
+asociado al código pasado por parámetro. 
+0237 Tag NumElementos incorrecto. {1} 
+0252 Contenido incorrecto <NombreCampo> <Valor> 
+0301 Organismo no autorizado {1} {2} 
+0398 Servicio no disponible en modo asíncrono 
+0399 El usuario de acceso al servicio web {1} no corresponde al usuario autorizado para el 
+organismo {2} 
+0401 La estructura del fichero recibido no corresponde con el esquema. Falta tag obligatorio 
+<NombreCampo> 
+0402 Falta informar campo obligatorio <NombreCampo> 
+0414 El número de elementos no coincide con el número de solicitudes recibidas. {1} 
+0415 El número de solicitudes es mayor que uno. Ejecute el servicio en modo asíncrono. 
+0417 En una comunicación síncrona el identificador de Petición y el identificador de Solicitud 
+deben ser iguales 
+0499 Contenido improcedente <NombreCampo> 
+0501 Error de Base de Datos: {1} 
+0502 Error de sistema: {1} 
+0503 Error al obtener la respuesta o el resultado del servicio del Backoffice 
+0513 Problemas al registrar la respuesta 
+4013 La fecha {1} no tiene el formato correcto o el año debe ser mayor que 1900 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+24 
+4.2. Errores funcionales devueltos por el servicio 
+Codigo 
+Estado 
+LiteralError 
+1000 Solicitud correcta 
+1008 Contenido duplicado <NombreCampo> 
+1026 Extensión de documento no permitida. Las extensiones admitidas son {1} 
+1027 El fichero {1} supera el tamaño máximo permitido {2} 
+4000 El campo {1} debe ser numérico 
+4001 El campo {1} debe ser menor o igual que el campo {2} 
+4002 La fecha {1} debe ser menor o igual que la fecha {2} 
+4003 El rango valido de años de {1} debe estar entre {2} y {3} 
+4004 {1} debe ser igual a {2} 
+4005 {1} de {2} debe ser igual a {3} de {4} 
+4006 El plan estratégico no existe en BDNS 
+4007 El órgano {1} no tiene permisos de edición del plan estratégico de subvenciones 
+4100 La versión no existe en BDNS 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+25 
+5. Ejemplos de mensajes 
+En el siguiente enlace se incluyen ejemplos de los distintos mensajes explicados en el 
+documento: 
+https://www.oficinavirtual.pap.hacienda.gob.es/sitios/oficinavirtual/es-
+ES/CatalogoSistemasInformacion/TESEOnet/Documents/EjemplosXML.zip 
+Especificaciones del Servicio Web de Planes Estratégicos 
+Este documento se elabora exclusivamente a efectos de divulgación y podrá ser modificado, sustituido o eliminado sin previo aviso. 
+26 
+6. Versiones y funcionalidades 
+Descripción de la Funcionalidad Servicio Web Versión 
+Sin funcionalidades en esta versión para este servicio web BDNSPES 3.4.40 

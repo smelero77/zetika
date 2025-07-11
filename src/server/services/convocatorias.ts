@@ -14,6 +14,8 @@ import {
   getCachedSectores,
   existingConvocatoriasCache,
 } from './cache';
+import { validateAndSanitizeConvocatoriaDetalle, sanitizeString } from '~/schemas/convocatoria-detalle';
+import { catalogResolver } from '~/server/services/catalog-resolver';
 
 // Tipos para los datos de convocatorias
 interface ConvocatoriaDetalle {
@@ -135,73 +137,145 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     const logMeta = { jobName, runId, catalogName: 'Convocatorias', convocatoriaId: detalle.id };
     const startItem = Date.now();
     
-    const newHash = computeContentHash(detalle as unknown as Record<string, unknown>);
+    // --- PASO 1: VALIDAR Y SANITIZAR DATOS ---
+    let validatedDetalle;
+    try {
+        validatedDetalle = validateAndSanitizeConvocatoriaDetalle(detalle);
+    } catch (error) {
+        logger.error(`Error validando convocatoria ${detalle.id}:`, error as Error, logMeta);
+        throw new Error(`Datos de convocatoria ${detalle.id} no válidos: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
-    // --- PASO 1: PREPARAR DATOS (FUERA DE CUALQUIER TRANSACCIÓN) ---
-    const finalidad = detalle.descripcionFinalidad ? getCachedFinalidad(detalle.descripcionFinalidad) : null;
-    const reglamento = detalle.reglamento?.autorizacion ? getCachedReglamento(Number(detalle.reglamento.autorizacion)) : null;
-    const tiposBeneficiarioIds = getCachedTiposBeneficiario((detalle.tiposBeneficiarios || []).map((t) => t.id).filter(Boolean));
-    const instrumentosIds = getCachedInstrumentos((detalle.instrumentos || []).map((i) => i.id).filter(Boolean));
-    const regionesIds = getCachedRegiones((detalle.regiones || []).map((r) => r.id).filter(Boolean));
-    const fondosIds = getCachedFondos((detalle.fondos || []).map((f) => f.descripcion));
-    const sectoresIds = getCachedSectores((detalle.sectores || []).map((s) => s.codigo).filter(Boolean));
+    // Calcular hash con datos sanitizados
+    const newHash = computeContentHash(validatedDetalle as unknown as Record<string, unknown>);
+    
+    // --- PASO 2: RESOLVER CATÁLOGOS POR DESCRIPCIÓN ---
+    const [
+        tiposBeneficiariosResult,
+        instrumentosResult,
+        sectoresResult,
+        regionesResult,
+        fondosResult,
+        objetivosResult,
+        sectoresProductosResult,
+        reglamentoResult,
+        organoResult,
+    ] = await Promise.all([
+        catalogResolver.resolveTiposBeneficiarios(validatedDetalle.tiposBeneficiarios || []),
+        catalogResolver.resolveInstrumentos(validatedDetalle.instrumentos || []),
+        catalogResolver.resolveSectores(validatedDetalle.sectores || []),
+        catalogResolver.resolveRegiones(validatedDetalle.regiones || []),
+        catalogResolver.resolveFondos(validatedDetalle.fondos || []),
+        catalogResolver.resolveObjetivos(validatedDetalle.objetivos || []),
+        catalogResolver.resolveSectoresProductos(validatedDetalle.sectoresProductos || []),
+        catalogResolver.resolveReglamentoUE(validatedDetalle.reglamento),
+        catalogResolver.resolveOrgano(validatedDetalle.organo),
+    ]);
+    
+    // --- PASO 3: DETERMINAR SI NECESITA REVISIÓN MANUAL ---
+    const allSummaries = [
+        tiposBeneficiariosResult.summary,
+        instrumentosResult.summary,
+        sectoresResult.summary,
+        regionesResult.summary,
+        fondosResult.summary,
+        objetivosResult.summary,
+        sectoresProductosResult.summary,
+    ];
+    
+    const needsManualReview = allSummaries.some(s => s.needsManualReview) || 
+                             reglamentoResult.summary.needsManualReview || 
+                             organoResult.summary.needsManualReview;
+    
+    const missingCatalogs = allSummaries.flatMap(s => s.missingCatalogs);
+    missingCatalogs.push(...reglamentoResult.summary.missingCatalogs);
+    missingCatalogs.push(...organoResult.summary.missingCatalogs);
+    
+    if (missingCatalogs.length > 0) {
+        logger.warn(`Convocatoria ${detalle.id} tiene catálogos faltantes:`, { 
+            ...logMeta, 
+            missingCatalogs,
+            needsManualReview 
+        });
+    }
 
-    // --- PASO 2: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
+    // --- PASO 4: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
     const convocatoria = await dbETL.convocatoria.upsert({
-        where: { idOficial: detalle.id },
+        where: { idOficial: validatedDetalle.id },
         create: {
-            idOficial: detalle.id,
-            codigoBDNS: detalle.codigoBDNS,
-            titulo: detalle.descripcion,
-            tituloCooficial: detalle.descripcionLeng,
-            descripcion: detalle.descripcionBasesReguladoras,
-            presupuestoTotal: detalle.presupuestoTotal,
-            urlBasesReguladoras: detalle.urlBasesReguladoras,
-            sedeElectronica: detalle.sedeElectronica,
-            fechaPublicacion: parseDate(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
-            fechaInicioSolicitud: parseDateOptional(detalle.fechaInicioSolicitud),
-            fechaFinSolicitud: parseDateOptional(detalle.fechaFinSolicitud),
-            plazoAbierto: parseBoolean(detalle.abierto),
-            mrr: parseBoolean(detalle.mrr),
-            finalidadId: finalidad?.idOficial,
-            reglamentoId: reglamento?.idOficial,
-            tipoConvocatoria: detalle.tipoConvocatoria,
-            descripcionBasesReguladoras: detalle.descripcionBasesReguladoras,
-            sePublicaDiarioOficial: detalle.sePublicaDiarioOficial,
-            textInicioSolicitud: detalle.textInicio,
-            ayudaEstadoSANumber: detalle.ayudaEstado,
-            ayudaEstadoUrl: detalle.urlAyudaEstado,
-            tiposBeneficiario: { connect: tiposBeneficiarioIds.map(t => ({ id: t.id })) },
-            instrumentosAyuda: { connect: instrumentosIds.map(i => ({ id: i.id })) },
-            regionesDeImpacto: { connect: regionesIds.map(r => ({ id: r.id })) },
-            fondosEuropeos: { connect: fondosIds.map(f => ({ id: f.id })) },
-            sectoresEconomicos: { connect: sectoresIds.map(s => ({ id: s.id })) },
+            idOficial: validatedDetalle.id,
+            codigoBDNS: validatedDetalle.codigoBDNS,
+            numeroConvocatoria: validatedDetalle.numeroConvocatoria || null,
+            titulo: validatedDetalle.descripcion || '',
+            tituloCooficial: validatedDetalle.descripcionLeng,
+            descripcion: validatedDetalle.descripcionBasesReguladoras,
+            presupuestoTotal: validatedDetalle.presupuestoTotal,
+            urlBasesReguladoras: validatedDetalle.urlBasesReguladoras,
+            sedeElectronica: validatedDetalle.sedeElectronica,
+            fechaRecepcion: parseDateOptional(validatedDetalle.fechaRecepcion),
+            fechaPublicacion: parseDate(validatedDetalle.fechaPublicacion ?? validatedDetalle.fechaRecepcion),
+            fechaInicioSolicitud: parseDateOptional(validatedDetalle.fechaInicioSolicitud),
+            fechaFinSolicitud: parseDateOptional(validatedDetalle.fechaFinSolicitud),
+            plazoAbierto: parseBoolean(validatedDetalle.abierto),
+            mrr: parseBoolean(validatedDetalle.mrr),
+            tipoConvocatoria: validatedDetalle.tipoConvocatoria,
+            descripcionBasesReguladoras: validatedDetalle.descripcionBasesReguladoras,
+            sePublicaDiarioOficial: validatedDetalle.sePublicaDiarioOficial,
+            textInicioSolicitud: validatedDetalle.textInicio,
+            textFinSolicitud: validatedDetalle.textFin,
+            ayudaEstadoSANumber: validatedDetalle.ayudaEstado,
+            ayudaEstadoUrl: validatedDetalle.urlAyudaEstado,
+            advertencia: validatedDetalle.advertencia,
+            estado: validatedDetalle.estado,
+            indInactiva: validatedDetalle.indInactiva,
+            needsManualReview,
+            // Campos del órgano
+            nivel1: validatedDetalle.organo?.nivel1,
+            nivel2: validatedDetalle.organo?.nivel2,
+            nivel3: validatedDetalle.organo?.nivel3,
+            // Relaciones M-M con catálogos resueltos
+            tiposBeneficiario: { connect: tiposBeneficiariosResult.ids.map(id => ({ id })) },
+            instrumentosAyuda: { connect: instrumentosResult.ids.map(id => ({ id })) },
+            regionesDeImpacto: { connect: regionesResult.ids.map(id => ({ id })) },
+            fondosEuropeos: { connect: fondosResult.ids.map(id => ({ id })) },
+            sectoresEconomicos: { connect: sectoresResult.ids.map(id => ({ id })) },
+            sectoresDeProducto: { connect: sectoresProductosResult.ids.map(id => ({ id })) },
+            objetivos: { connect: objetivosResult.ids.map(id => ({ id })) },
         },
         update: {
-            titulo: detalle.descripcion,
-            tituloCooficial: detalle.descripcionLeng,
-            descripcion: detalle.descripcionBasesReguladoras,
-            presupuestoTotal: detalle.presupuestoTotal,
-            urlBasesReguladoras: detalle.urlBasesReguladoras,
-            sedeElectronica: detalle.sedeElectronica,
-            fechaPublicacion: parseDate(detalle.fechaPublicacion ?? detalle.fechaRecepcion),
-            fechaInicioSolicitud: parseDateOptional(detalle.fechaInicioSolicitud),
-            fechaFinSolicitud: parseDateOptional(detalle.fechaFinSolicitud),
-            plazoAbierto: parseBoolean(detalle.abierto),
-            mrr: parseBoolean(detalle.mrr),
-            finalidadId: finalidad?.idOficial,
-            reglamentoId: reglamento?.idOficial,
-            tipoConvocatoria: detalle.tipoConvocatoria,
-            descripcionBasesReguladoras: detalle.descripcionBasesReguladoras,
-            sePublicaDiarioOficial: detalle.sePublicaDiarioOficial,
-            textInicioSolicitud: detalle.textInicio,
-            ayudaEstadoSANumber: detalle.ayudaEstado,
-            ayudaEstadoUrl: detalle.urlAyudaEstado,
-            tiposBeneficiario: { set: tiposBeneficiarioIds.map(t => ({ id: t.id })) },
-            instrumentosAyuda: { set: instrumentosIds.map(i => ({ id: i.id })) },
-            regionesDeImpacto: { set: regionesIds.map(r => ({ id: r.id })) },
-            fondosEuropeos: { set: fondosIds.map(f => ({ id: f.id })) },
-            sectoresEconomicos: { set: sectoresIds.map(s => ({ id: s.id })) },
+            titulo: validatedDetalle.descripcion || '',
+            tituloCooficial: validatedDetalle.descripcionLeng,
+            descripcion: validatedDetalle.descripcionBasesReguladoras,
+            presupuestoTotal: validatedDetalle.presupuestoTotal,
+            urlBasesReguladoras: validatedDetalle.urlBasesReguladoras,
+            sedeElectronica: validatedDetalle.sedeElectronica,
+            fechaRecepcion: parseDateOptional(validatedDetalle.fechaRecepcion),
+            fechaPublicacion: parseDate(validatedDetalle.fechaPublicacion ?? validatedDetalle.fechaRecepcion),
+            fechaInicioSolicitud: parseDateOptional(validatedDetalle.fechaInicioSolicitud),
+            fechaFinSolicitud: parseDateOptional(validatedDetalle.fechaFinSolicitud),
+            plazoAbierto: parseBoolean(validatedDetalle.abierto),
+            mrr: parseBoolean(validatedDetalle.mrr),
+            tipoConvocatoria: validatedDetalle.tipoConvocatoria,
+            descripcionBasesReguladoras: validatedDetalle.descripcionBasesReguladoras,
+            sePublicaDiarioOficial: validatedDetalle.sePublicaDiarioOficial,
+            textInicioSolicitud: validatedDetalle.textInicio,
+            textFinSolicitud: validatedDetalle.textFin,
+            ayudaEstadoSANumber: validatedDetalle.ayudaEstado,
+            ayudaEstadoUrl: validatedDetalle.urlAyudaEstado,
+            advertencia: validatedDetalle.advertencia,
+            estado: validatedDetalle.estado,
+            indInactiva: validatedDetalle.indInactiva,
+            needsManualReview,
+            // Campos del órgano
+            nivel1: validatedDetalle.organo?.nivel1,
+            nivel2: validatedDetalle.organo?.nivel2,
+            nivel3: validatedDetalle.organo?.nivel3,
+            // Relaciones M-M con catálogos resueltos
+            tiposBeneficiario: { set: tiposBeneficiariosResult.ids.map(id => ({ id })) },
+            instrumentosAyuda: { set: instrumentosResult.ids.map(id => ({ id })) },
+            regionesDeImpacto: { set: regionesResult.ids.map(id => ({ id })) },
+            fondosEuropeos: { set: fondosResult.ids.map(id => ({ id })) },
+            sectoresEconomicos: { set: sectoresResult.ids.map(id => ({ id })) },
         },
     });
 
@@ -209,12 +283,12 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     const syncTasks: Promise<unknown>[] = [];
     const syncTaskNames: string[] = [];
 
-    if (detalle.documentos && detalle.documentos.length > 0) {
+    if (validatedDetalle.documentos && validatedDetalle.documentos.length > 0) {
         syncTaskNames.push('documentos');
         syncTasks.push(dbETL.$transaction([
             dbETL.documento.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             dbETL.documento.createMany({
-                data: detalle.documentos.map((doc) => ({
+                data: validatedDetalle.documentos.map((doc) => ({
                     idOficial: doc.id,
                     nombreFic: doc.nombreFic,
                     descripcion: doc.descripcion,
@@ -228,19 +302,19 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
         ]));
     }
     
-    if (detalle.anuncios && detalle.anuncios.length > 0) {
+    if (validatedDetalle.anuncios && validatedDetalle.anuncios.length > 0) {
         syncTaskNames.push('anuncios');
         syncTasks.push(dbETL.$transaction([
             dbETL.anuncio.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
             dbETL.anuncio.createMany({
-                data: detalle.anuncios.map((an) => ({
+                data: validatedDetalle.anuncios.map((an) => ({
                     numAnuncio: parseNumber(an.numAnuncio),
-                    titulo: an.titulo,
-                    tituloLeng: an.tituloLeng,
-                    texto: an.texto,
-                    url: an.url,
-                    cve: an.cve,
-                    desDiarioOficial: an.desDiarioOficial,
+                    titulo: an.titulo || '',
+                    tituloLeng: an.tituloLeng || null,
+                    texto: an.texto || '',
+                    url: an.url || null,
+                    cve: an.cve || null,
+                    desDiarioOficial: an.desDiarioOficial || null,
                     fechaPublicacion: an.datPublicacion ? new Date(an.datPublicacion) : null,
                     convocatoriaId: convocatoria.id,
                 })),
@@ -249,22 +323,23 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
         ]));
     }
 
-    if (detalle.objetivos && detalle.objetivos.length > 0) {
-        syncTaskNames.push('objetivos');
-        syncTasks.push(dbETL.$transaction([
-            dbETL.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
-            dbETL.objetivo.createMany({
-                data: detalle.objetivos.map((obj) => ({
-                    descripcion: obj.descripcion,
-                    convocatoriaId: convocatoria.id,
-                })),
-                skipDuplicates: true,
-            })
-        ]));
-    }
+    // Los objetivos ya se manejan en la relación M-M con catálogos
+    // if (validatedDetalle.objetivos && validatedDetalle.objetivos.length > 0) {
+    //     syncTaskNames.push('objetivos');
+    //     syncTasks.push(dbETL.$transaction([
+    //         dbETL.objetivo.deleteMany({ where: { convocatoriaId: convocatoria.id } }),
+    //         dbETL.objetivo.createMany({
+    //             data: validatedDetalle.objetivos.map((obj) => ({
+    //                 descripcion: obj.descripcion,
+    //                 convocatoriaId: convocatoria.id,
+    //             })),
+    //             skipDuplicates: true,
+    //         })
+    //     ]));
+    // }
     
     const syncResults = await Promise.allSettled(syncTasks);
-    const documentosProcesados = detalle.documentos || [];
+    const documentosProcesados = validatedDetalle.documentos || [];
 
     const failedTasks: { name: string, reason: unknown }[] = [];
     syncResults.forEach((result, index) => {
@@ -276,8 +351,8 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
 
     if (failedTasks.length > 0) {
         const failedTaskNames = failedTasks.map(f => f.name).join(', ');
-        const error = new Error(`Fallaron sub-tareas de sincronización para convocatoria ${detalle.id}: ${failedTaskNames}`);
-        logger.error(`Fallaron sub-tareas de sincronización para convocatoria ${detalle.id}: ${failedTaskNames}. Inngest reintentará el step.`, error, logMeta);
+        const error = new Error(`Fallaron sub-tareas de sincronización para convocatoria ${validatedDetalle.id}: ${failedTaskNames}`);
+        logger.error(`Fallaron sub-tareas de sincronización para convocatoria ${validatedDetalle.id}: ${failedTaskNames}. Inngest reintentará el step.`, error, logMeta);
         throw error;
     }
 

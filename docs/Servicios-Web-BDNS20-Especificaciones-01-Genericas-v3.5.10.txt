@@ -1,0 +1,319 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ÍNDICE
+Control Documental	2
+1. Introducción	6
+2. Descripción General	8
+3. Arquitectura técnica BDNS	10
+4. Emisor-Requirente	12
+5. Requisitos	14
+5.1. Formato de firma	14
+5.2. DIR3	14
+5.3. Actuaciones previas	14
+6. Características	15
+6.1. Modos de funcionamiento	15
+6.2. Órgano solicitante y Órgano Gestor	16
+6.3. Identificadores de petición	16
+6.4. Identificadores de solicitud	17
+6.5. Identificadores de transmisión	17
+6.6. SOAP Fault	17
+6.7. Versionado de los servicios web	17
+7. Descripción de los servicios	19
+8. Gestión de errores	21
+9. Versiones y funcionalidades	22
+
+Control Documental
+
+FECHAVERSIÓNCAMBIOS REALIZADOS25/08/20141.0Especificación inicial13/11/20151.01Servicio Concesiones - Pagos - Proyectos
+Se cambia el código TSUBPR por SUBPR02/12/20151.01Servicio Datos Personales
+El campo CodMunicipio pasa a tener longitud 4.11/12/20151.02Servicios Web: todos
+Se corrige el formato del campo TIMESTAMP: DD/MM/AAAA HH:MM:SS31/12/20151.03Servicio Concesiones-Pagos-Proyectos
+Se corrige errata en descripción de campoTipoAnualidad Se aclara los valores posibles del campo Retencion.08/01/20161.04Servicio Concesiones - Pagos - Proyectos
+Se cambia el código BDNSCONCPAGOPRY por BDNSCONCPAGPRY.17/02/20161.05Se incluye el servicio web de Convocatorias.
+Se elimina el campo ImporteSancion del servicio web de Sanciones e Inhabilitaciones, que aparecía por error en la tabla de elementos de
+DatosEspecificos, aunque no en la imagen del Esquema.29/01/20161.06Servicios Web: Convocatorias
+Se corrige el formato del campo TIMESTAMP: DD/MM/AAAA HH:MM:SS09/03/20161.07Servicio Web Convocatorias: el campo IdConvocatoria del mensaje de
+respuesta se cambia a Opcional.06/04/20161.08Servicio Web Convocatorias:
+Se elimina la validación del campo TipoBeneficiario: Si se ha incluido el tag
+'AyudaEstado' sólo se admiten "Pyme" y/o "Gran empresa
+Se elimina el código de error 1127 (Si las ayudas de la convocatoria deben
+tipificarse con ADE (Ayuda de Estado) sólo se admite 'Pyme' y 'Gran Empresa' como tipos de beneficiario )
+
+
+21/04/20161.09Todos los servicios:
+Se corrige el formato del campo FechaGeneracion del mensaje de Respuesta (DD-MM-AAAA HH:MM:SS)
+Se incluyen nuevas etiquetas opcionales en los esquemas Peticion y Respuesta para compatibilizar dichos esquemas con el estándar SCSP (Finalidad, Consentimiento, Titular, TipoDocumentacion, Documentacion)
+Se admite dos formatos de fecha en el campo Timestamp del mensaje de
+petición, para compatibilizar dicho campo con el estándar SCSP.04/05/20161.10Servicio Web Devoluciones y Reintegros:
+Se corrige errata en el campo Comentarios del campo TipoMovimiento del mensaje de Peticion.02/06/20161.11Servicio Web Datos Personales y Convocatorias:
+Nuevo mensaje de error: 1112 - 'Si se incluye un sector agregado, no se
+permite incluir ninguno de los sectores que agrega'.
+Servicio Web Datos Personales:
+Se corrige el criterio de obligatoriedad del campo Segundo Apellido.07/07/20161.12Servicio Web de Sanciones e Inhabilitaciones:
+Se añade la opción de incorporar en una inhabilitación uno o varios ficheros con la sentencia o resolución sancionadora.
+Nuevos códigos de retorno: 1026 y 1027
+Se amplía la longitud de la identificación del sancionado/inhabilitado a 25 posiciones.14/09/20161.13Los servicios web de la BDNS no cumplen las especificaciones del protocolo SCSPv3, por ello se elimina cualquier referencia al mismo en el documento.
+Nueva versión asíncrona de los servicios BDNSDATPER, BDNSCONCPAGPRY
+y BDNSDEVOLREINT30/09/20161.14Nuevo servicio web de consulta de convocatorias BDNSCONSULTACV10/10/20161.15Se eliminan las referencias al Tipo de Instrumento de ayuda "Subvención y
+Préstamos"16/11/20161.16Se corrige errata en la descripción de la parte específica del Servicio Web
+Consulta Convoctoria: faltaba el campo IdConvocatoria
+
+
+09/02/20171.17Se modifica el texto del mensaje de error de los códigos 1049, 1053 y 1069.01/04/20203.0Se añaden nuevos campos para devolver información relativa a la Resolución de 2020 de la Intervención General de la Administración del Estado, por la que se regula el proceso de registro y publicación de convocatorias en el Sistema Nacional de Publicidad de Subvenciones y
+Ayudas Públicas.20/07/20203.1Corrección de errores BDNS20 en WS BDNSCONVOC y BDNSCONSULTACV17/08/20203.2Nueva versión de los WS BDNSCONVOC y BDNSCONSULTACV17/06/20213.3Cambios	en	el	WS	BDNSCONVOC.	Nuevas	validaciones	en
+ImporteFinanciacion y FondoUE. Cambios en los códigos de error: 1333, 3009, 3010, 3011, 4000.20/09/20213.4Se añade el campo PartidoPolitico en el WS de Datos personales.03/11/20213.5Servicio Web de Sanciones e Inhabilitaciones: Se añade el campo Alcance opcional.
+Servicio Web Convocatorias: el campo ReferenciaUE se amplía a 6 dígitos.01/02/20223.6Servicio Web Convocatorias: se añade el campo opcional MRR.27/07/20224.0Se añaden especificaciones del WS de Planes estratégicos.
+Servicio Web Convocatorias: se añaden nuevos códigos de error.02/02/20234.1Corrección de errores BDNS20 en WS BDNSCONVOC y BDNSCONSULTACV.23/02/20234.2Corrección de errores BDNS20 en WS BDNSDATPER.01/06/20234.3Servicio Web Convocatorias: se añade nuevo código de error.20/07/20234.35Servicio Web Convocatorias: se añade el campo opcional SAExen.30/08/20233.4.40Nuevo atributo opcional Version en Peticion y Respuesta:
+6.7 Versionado de los servicios web Se añade nuevo código de error 4100.
+Servicio Web Consulta Convocatorias: se añade el campo opcional SAExen
+en Respuesta.28/09/20233.4.44Servicio Web BDNSDATPER: se añade campo opcional NumeroSoporte
+
+
+18/04/20243.5.0Servicio Web BDNSCONCPAGPRY: se modifica el bloque Proyecto y se añaden nuevos campos en el bloque Concesiones.
+Se añaden nuevos códigos de error: del 1137 al 1139 y del 1260 al 1268.
+Servicio Web Convocatorias: se añaden nuevos códigos de error 4009 y 4010.08/05/20243.5.10Servicios Web BDNSCONCPAGPRY, BDNSDEVOLREINT y BDNSSANCINH:
+nuevo campo CodigoConcesion en sustitución de IdConcesion.
+Se añaden nuevos códigos de error: 1029, 1030 y 1269.11/06/20243.5.0
+RevisiónServicio Web BDNSCONCPAGPRY: revisión en la que se mantiene la compatibilidad con el bloque DatosAnualidades. Si no se informan los campos PeriodoEjecucion, el valor mínimo de Anualidad se asignará a
+PeriodoEjecucionDesde y el valor máximo a PeriodoEjecucionHasta.11/06/20243.5.10
+RevisiónServicios Web BDNSCONCPAGPRY, BDNSDEVOLREINT y BDNSSANCINH:
+revisión en la que se preserva la funcionalidad de la tripleta identificativa IdConcesion (convocatoria, beneficiario y discriminador).
+Se añade nuevo código de error: 4101.25/06/20243.5.0
+RevisiónServicio Web BDNSCONCPAGPRY: revisión en la que se corrige error en la respuesta asíncrona del alta de Proyectos. Se devuelve CodigoProyecto.
+Se revisa descripción de códigos de error 1033 y 1043.
+Servicio Web BDNSDEVOLREINT: se añaden nuevos códigos de error 1077 y 107825/06/20243.5.10
+RevisiónServicio Web BDNSCONCPAGPRY: revisión en la que se corrigen errores en
+la respuesta asíncrona del alta de Concesiones y la baja síncrona de Concesiones. Se devuelve CodigoConcesion.20/08/2024RevisiónServicio Web BDNSCONCPAGPRY: se añaden nuevos códigos de error: 1041, 1300, 1301, 1302.
+El campo CosteConcesion pasa a ser opcional en Préstamos
+
+
+1. Introducción
+   Los avances en las tecnologías de la información que se han producido desde los diseños originales de la Base de Datos Nacional de Subvenciones hacían necesario que, junto al desarrollo de mejoras y reformas funcionales exigidas por las Leyes 19/2013, 15/2015, y Reglamentos EU 651/2014, 702/2014 y 1388/2014, se abordara también una profunda reforma desde la perspectiva técnica.
+   Además de incorporar nuevos interfaces, y nuevas funcionalidades que suavizaran la curva de aprendizaje de los usuarios, el impulso sostenido que la Ley 11/2007 ha mantenido desde su promulgación en pos de la interoperabilidad técnica, semántica y funcional constituía una oportunidad que no se podía dejar pasar.
+   Consecuentemente con todo ello, los mecanismos de remisión de datos a la BDNS 2007 mantenidos hasta diciembre de 2015 van a ser sustituidos por mecanismos creados bajo el paradigma de "servicios web" para la BDNS 2016.
+   Este documento incluye la especificación de los siguientes servicios, que se utilizarán, alternativamente a la introducción de textos por pantalla de una aplicación web:
+* Aspectos generales que afectan a todos los WS
+* Servicio web de concesiones, proyectos y pagos.
+* Servicio web de datos personales de beneficiarios
+* Servicio web de devoluciones y reintegros
+* Servicio web de sanciones e inhabilitaciones
+* Servicio web de convocatorias
+* Servicio web de consulta de convocatorias
+* Servicio web de planes estratégicos
+   Este documento está destinado a los funcionarios técnicos informáticos que proporcionan soporte TIC a las operaciones de gestión de subvenciones de los distintos órganos obligados a remitir información a la BDNS. Se describen en él todos los servicios web que se van a desarrollar para el suministro de información a la BDNS. Quedan exceptuados de este documento los servicios web que en su momento se diseñarán para las consultas a la BDNS.
+   Por último, la descripción del WS que se encargará de poner a disposición de los Diarios Oficiales el extracto de la convocatoria que estos debe publicar, se encuentra definido en el
+
+
+
+documento "Descripción de los mecanismos de publicidad de las convocatorias de subvenciones y ayudas públicas a través de la Base de Datos Nacional de Subvenciones - documento de divulgación 3", publicado por el Equipo de Administración y Custodia de la BDNS.
+
+
+2. Descripción General
+   La BDNS contiene información sobre la normativa aplicable y los procedimientos de gestión y de reintegro de las subvenciones concedidas, así como la relativa a algunas prohibiciones para obtener la condición de beneficiario.
+   Esta información es aportada a la base de datos bajo la exclusiva responsabilidad de los órganos gestores de las subvenciones y está custodiada por la Intervención General de la Administración del Estado.
+   La CONVOCATORIA contiene la normativa que rige la gestión de la subvención o de cualquier otra ayuda pública. La BDNS recogerá información de una gran variedad de instrumentos de ayuda:
+* Las subvenciones (y las entregas dinerarias sin contraprestación, incluyéndose en este grupo las subvenciones en especie y la bonificación de intereses en las operaciones de crédito).
+* Préstamos y anticipos reembolsables.
+* Garantías.
+* Ventajas o exenciones fiscales.
+* Aportación de financiación de riesgo.
+* Otros instrumentos de ayuda La BDNS registra:
+* Las convocatorias, que contendrán tanto información estructurada como un conjunto de archivos, como el texto de la convocatoria, extracto y cualquier otro documento que el convocante desee remitir.
+* Información contable-presupuestaria en la fase de disposición del gasto.
+* Exclusivamente sobre las concesiones de subvenciones, mantiene información sobre el ritmo temporal de los PAGOS a los beneficiarios y sobre sus posibles DEVOLUCIONES VOLUNTARIAS y REINTEGROS.
+* La ejecución material de la actividad queda recogida en la BDNS a través de los PROYECTOS, sólo en el caso de las concesiones de subvención y de préstamo, con detalle sobre los compromisos asumidos en el tiempo por sus EJECUTORES (beneficiarios y otros partícipes) y con detalle, igualmente, sobre los importes de subvención y préstamo recibidos.
+
+
+
+* Las sanciones y las inhabilitaciones judiciales para obtener subvenciones.
+* Información sobre los datos de identificación y de localización de todo tercero que aparezca en cualquier bloque de información relacionado con la gestión de las subvenciones (beneficiario de una subvención o de una entrega dineraria sin contraprestación, partícipe en la ejecución de un proyecto junto con el beneficiario de la subvención, sancionado, inhabilitado).
+* Los planes estratégicos de subvenciones
+
+   Para este registro en la BDNS, se han desarrollado una serie de servicios web que conjuntamente permiten el mantenimiento de la información. El orden de invocación de los servicios para asegurar la consistencia de la información es responsabilidad de cada órgano obligado.
+
+
+
+3. Arquitectura técnica BDNS
+La arquitectura técnica global de la BDNS se muestra en la figura siguiente:
+
+
+En la figura se puede observar que la BDNS tiene interacción con los siguientes actores:
+- Órganos Gestores: son los órganos obligados a enviar información sobre convocatorias y subvenciones a la BDNS. Para ello, dispondrán de dos alternativas:
+o Grabación manual de datos en unas nuevas pantallas de la BDNS
+o Envío automatizado de información mediante Servicios Web (objeto de este documento).
+   Es importante recalcar en esta relación entre órganos gestores y BDNS, que la grabación tanto por pantalla como por servicio web siempre tendrá un efecto instantáneo en la base de datos BDNS (excepto en el caso de servicios web asíncronos). Desaparece, por tanto, el concepto de envío y proceso nocturno vigente hasta la fecha.
+- SNPSAP: El Sistema Nacional de Publicidad de Subvenciones y Ayudas Públicas es un portal público abierto al ciudadano a través de Internet que contiene un extracto de la información existente en la BDNS, y que se ofrece en condiciones de interoperabilidad y "datos abiertos".
+
+
+
+
+
+- Entidades externas que interactúan con la BDNS, como son:
+o SCSP (Sustitución de Certificados en Soporte Papel): la BDNS utiliza el Servicio de Verificación de Datos de Identidad de la Dirección General de la Policía, para verificar la validez de los NIF de personas físicas enviadas a la BDNS.
+o AEAT: Igualmente, la BDNS usará el Servicio de Validación de NIF de personas jurídicas de la Agencia Tributaria para validar los NIF de persona jurídica enviados a la BDNS.
+o @firma: utilizado para la validación de certificados en los procesos de autenticación de órganos y usuarios.
+o BOE y otros Diarios Oficiales: tanto el BOE como el resto de Diarios Oficiales existentes dispondrán de un servicio web para poder recoger de la BDNS los extractos de las convocatorias enviadas por los órganos gestores y publicarlos en sus boletines. De igual forma, podrán informar a la BDNS del resultado de esta publicación.
+
+
+4. Emisor-Requirente
+   Los servicios web de la BDNS contemplan dos roles fundamentales, el rol de emisor (IGAE) y el de requirente (órgano obligado a facilitar información sobre las subvenciones que se conceden). El emisor es responsable de:
+* La definición y publicación de los servicios web (WSDL, XSD, etc.).
+* Generación del Identificador de la transmisión efectuada y su marca de tiempo.
+* Registro de las solicitudes recibidas y de las transmisiones enviadas y almacenamiento durante el tiempo que requiere la ley.
+El requirente es responsable de:
+* Consumir los servicios web (WSDL, XSD, ...) cumpliendo con las especificaciones definidas.
+* Generar el Identificador de la petición enviada y de las Solicitudes a incluir en dicha petición.
+* Cumplimentar adecuadamente las peticiones enviadas garantizando la veracidad de los datos enviados.
+* Registrar las solicitudes enviadas y las transmisiones recibidas y almacenarlas el tiempo que se requiera.
+   Los servicios web de la BDNS están pensados para funcionar tanto de manera síncrona como de manera asíncrona y se basa en el intercambio de los siguientes mensajes:
+* Mensajes recibidos:
+o Peticion
+o SolicitudRespuesta
+* Mensajes emitidos:
+o Respuesta
+o ConfirmacionPeticion
+o Fault
+Como características generales de los mensajes hay que señalar:
+* Formato estandarizado XML y protocolo SOAP para su transmisión. Todos los organismos deberán adecuar el formato de los mensajes intercambiados a los esquemas definidos.
+
+
+
+* El protocolo de transporte será HTTP.
+* La confidencialidad de la información se realizará en base a interconexión de servidores utilizando protocolo SSL.
+* Todas las comunicaciones realizadas irán firmadas digitalmente con el objetivo de garantizar la autenticación (identificación), no repudio e integridad de la información intercambiada. La firma se realizará utilizando certificados X509 versión 3 según la normativa vigente. Estos certificados identificarán a las máquinas de cada organismo intervinientes en la comunicación y podrán ser emitidos por cualquier Autoridad de Certificación reconocida tanto por el emisor como por el requirente.
+
+
+5. Requisitos
+
+5.1. Formato de firma
+   Para el intercambio seguro de mensajes se utiliza la especificación WS-Security, basada en la utilización de certificados X509 versión 3. Todos los mensajes intercambiados entre el requirente y el emisor, deberán ir firmados, firmándose todo el body (Detached signature). El mecanismo de acceso a los elementos de seguridad (utilizados para la firma en WS-Security) será por referencia a un BinarySecurityToken (wsse:SecurityTokenReference).
+5.2. DIR3
+   El "Directorio Común de Unidades Orgánicas y Oficinas", (DIRECTORIO COMÚN), proporciona un inventario unificado y común a toda la Administración, que incluye la relación de las unidades orgánicas y sus oficinas asociadas, facilitando el mantenimiento distribuido y corresponsable de la información.
+   Puesto que BDNS está integrado con DIR3, es un requisito imprescindible que los requirentes también estén integrados con DIR3. Toda la información relativa al Directorio Común puede consultarse en la dirección: http://administracionelectronica.gob.es/ctt/dir3
+5.3. Actuaciones previas
+   Los órganos requirentes deben comunicar a la IGAE la voluntad de comenzar a consumir los servicios web. (Procedimiento regulado).
+
+
+6. Características
+
+6.1. Modos de funcionamiento
+   Todos los servicios web definidos para el suministro/consulta de información a la BDNS se han implementado en modo síncrono, ampliándose su funcionalidad en algunos de ellos para que admita funcionamiento asíncrono.
+   En el modo síncrono se intercambian dos mensajes, Peticion y Respuesta, de forma que un requirente realiza una petición al servicio deseado y permanece a la espera de la respuesta.
+
+
+   Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición síncrona sólo admite una única solicitud de transmisión dentro de cada petición.
+   En el modo asíncrono se intercambian los mensajes Peticion, ConfirmacionPeticion, SolicitudRespuesta y Respuesta. El requirente realiza una petición (con una o más solicitudes) sin necesidad de permanecer a la espera de la respuesta.
+
+
+   Una petición se compone de una lista de solicitudes de transmisión. El modelo de petición asíncrona podrá tener tantas solicitudes como soporte el servicio. Cada respuesta tendrá tantas transmisiones como solicitudes haya recibido.
+
+
+
+
+
+6.2. Órgano solicitante y Órgano Gestor
+Es importante distinguir entre el Órgano solicitante y el Órgano gestor.
+   Como Órgano solicitante se entiende aquel órgano que va a hacer uso del servicio web para la remisión/consulta de información. Este órgano se deberá identificar mediante su código DIR3 en el bloque Solicitante dentro de los mensajes Petición y Respuesta.
+   En los servicios web de remisión de información, el Órgano solicitante, en el caso de administración autonómica o local, podrá enviar información de los órganos gestores dependientes de él. En el servicio web de consulta, es posible consultar las convocatorias de un órgano gestor determinado. Como órgano gestor se entiende aquel órgano responsable de la concesión de subvenciones. Se identificará con su código DIR3, dentro del bloque DatosEspecificos.
+6.3. Identificadores de petición
+   Una petición está identificada con un ID único (IdPeticion) que la IGAE validará que no esté repetido, lo cual permitirá realizar una trazabilidad de las peticiones recibidas. Para garantizar la unicidad de los identificadores de petición para todos los organismos requirentes del servicio, este identificador deberá tener una parte que identifique unívocamente al organismo. Por ello el identificador de petición deberá incluir el código del organismo asignado por DIR3 (ej: CodDIR3 + '-' + numPeticion). Se recomienda que el IdPeticion se genere con información de
+
+
+
+fecha y hora más un secuencial con una longitud total de 26. Por ejemplo, con un formato del tipo CodDIR3-YYYYMMDDhhmmssXX.
+6.4. Identificadores de solicitud
+   Dentro de cada petición, podrán ir una o más solicitudes que deben poder identificarse de forma única. La forma de asignar esta identificación (IdSolicitud) es:
+* En el caso de peticiones síncronas solo habrá una solicitud y por tanto su identificador debe de coincidir con el identificador de petición.
+* En el caso de peticiones asíncronas, se definirá un número máximo de solicitudes permitidas. El identificador será un número secuencial de solicitud.
+6.5. Identificadores de transmisión
+   En la petición, dentro de cada solicitud, este valor será nulo. En la respuesta, para garantizar los mecanismos de auditoría y trazabilidad, la IGAE generará un Identificador único de cada transmisión realizada por él. Este identificador único se podrá usar a modo de "Código Seguro de Verificación" o referencia de la transmisión realizada y podrá ser verificada por los órganos de fiscalización, control y auditoría correspondientes.
+6.6. SOAP Fault
+   Algunos de los errores que se puedan generar durante la utilización del servicio se transmitirán utilizando el estándar SOAP Fault. Es decir, si alguna solicitud provoca un error SOAP Fault entonces únicamente se devuelve este objeto, no un mensaje de respuesta.
+6.7. Versionado de los servicios web
+   A partir de la versión 3.4.40 se introduce el versionado de los servicios web. Para facilitar a los integradores la adopción de nuevas funcionalidades y así adaptarse a los cambios normativos, se propone un esquema de versiones y funcionalidades. Una versión estará compuesta por una o más funcionalidades, y una funcionalidad podrá estar asignada a una o varias versiones. En cada versión se indicarán todas funcionalidades que aplican, no heredándose por defecto a versiones posteriores. De esta forma, es posible la sustitución de una funcionalidad por otra en una versión posterior.
+La versión se indicará a través de un nuevo atributo opcional en la petición: Version.
+
+
+
+
+
+   En base al valor que tenga el atributo Version, se aplicarán las funcionalidades que correspondan. En la Respuesta también se devolverá el atributo Version con el mismo valor recibido en la Petición.
+
+
+   Con el fin de garantizar la compatibilidad hacia atrás de los clientes de servicios web en funcionamiento, si en la petición no se incluye la Version se tratará como una petición no versionada. En ese caso, en la Respuesta no se retorna el atributo Version.
+En la siguiente tabla se muestran ejemplos de Petición y Respuesta.
+
+PeticiónRespuesta<pet:Peticion><Respuesta
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"><pet:Peticion Version=""><Respuesta Version=""
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"><pet:Peticion Version="?"><Respuesta Version=""
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta"><pet:Peticion Version="3.4.40"><Respuesta Version="3.4.40"
+xmlns="http://intermediacion.redsara.es/scsp/esquemas/V3/respuesta">En el apartado 9 se detalla la relación de versiones y funcionalidades.
+   Las novedades más significativas de la versión 3.5.0 están resaltadas en color amarillo y la versión 3.5.10 se resalta en color verde a lo largo de este documento.
+
+
+7. Descripción de los servicios
+   Se implementan los siguientes servicios web para cubrir todas las necesidades de información de la BDNS.
+
+NombreDescripciónAsíncronoBDNSDATPERPermite al requirente el envío de información relativa a los datos personales de cada uno de los terceros sobre los que esté obligado a facilitar algún tipo de información  (beneficiario  de  una  subvención,
+sancionado, inhabilitado o partícipe de un proyecto).SíBDNSCONVOCPermite al requirente el envío de la información
+relativa a la normativa que rige la gestión de la subvención o de cualquier otra ayuda pública.NoBDNSCONCPAGPRYPermite al requirente el envío de la información relativa a concesiones (subvención, préstamo, aval...), pagos a los beneficiarios y proyectos. Se han unificado estos tres conceptos en un mismo servicio web, pero en una misma petición (llamada al servicio) se admitirá únicamente información, de concesiones, de pagos o
+bien de proyectos.SíBDNSDEVOLREINTPermite al requirente el envío de información relativa a devoluciones voluntarias a iniciativa del beneficiario, y reintegros procedentes de subvención. Se han unificado estos dos conceptos en un mismo servicio web, pero en una misma petición (llamada al servicio) se  admitirá  únicamente  información,  o  bien  de
+devoluciones o de reintegros.SíBDNSSANCINHPermite al requirente el envío de información relativa a resoluciones firmes del procedimiento sancionador (sanciones pecuniarias impuestas en aplicación de la LGS) así como las inhabilitaciones. Se han unificado estos dos conceptos en un mismo servicio web, pero en
+una misma petición (llamada al servicio) se admitiráNo
+
+
+únicamente información, o bien de sanciones o de
+inhabilitaciones.BDNSCONSULTACVPermite al requirente, la consulta de todas / una convocatoria en la que participa un órgano gestor, bien como propietario de la misma, o como autorizado en la
+gestión de sus concesiones.NoBDNSPESPermite al requirente el envío de información relativa a los planes estratégicos de subvenciones.NoNota: Los servicios web BDNSCONVOC, BDNSSANCINH, BDNSCONSULTACV y BDNSPES, no
+disponen de versión asíncrona ni está prevista su implementación.
+   La funcionalidad de todos los servicios web de envío de información abarca el alta, modificación y baja de información en la BDNS.
+
+
+
+8. Gestión de errores
+   Se devolverá un mensaje SOAP Fault cuando el error detectado pertenezca a alguno de los siguientes tipos:
+* Error de conexión a la base de datos (BD).
+* Error de conexión a sistemas externos (@Firma, Servidores Externos, etc.).
+* Error en la validación de esquemas (o petición recibida sin firma).
+* Error por Validación de la Firma digital.
+* Petición no firmada.
+* Certificado caducado, revocado o no válido.
+* Error del Sistema Interno en el tratamiento de la petición.
+
+   En el resto de casos, no contemplados en la lista anterior, se entenderá que la petición se ha podido tramitar y se devolverá un mensaje de Respuesta especificando, en las etiquetas correspondientes, el código y el texto del error o estado correspondiente (una vez mapeado) al considerarse una respuesta contemplada por el negocio.
+
+
+9. Versiones y funcionalidades
+
+Descripción de la funcionalidadServicio WebVersiónF1. Si AutorizacionADE es CATEG y Reglamento es 9, 10 o 11, se devuelve en la Respuesta el campo SAExen (Vacío, 0 o 1)BDNSCONSULTACV3.4.40
+3.5.0
+3.5.10F2. Evolutivo Proyectos.
+En Petición se modifica el bloque Proyecto. En Respuesta se devuelve el CodigoProyecto.BDNSCONCPAGPRY3.5.0
+3.5.10F3. Evolutivo Concesiones.
+Nuevos campos: CodigoProyecto, PeriodoEjecucionDesde, PeriodoEjecucionHasta, PerdidaDerechoCobro y RenunciaVoluntaria.
+Por compatibilidad hacia atrás, si se informa el bloque DatosAnualidades en lugar de PeriodoEjecucion, el valor mínimo de Anualidad se asignará a PeriodoEjecucionDesde y el valor máximo a
+PeriodoEjecucionHasta.BDNSCONCPAGPRY3.5.0
+3.5.10F4. Evolutivo Concesiones. Nuevo campo CodigoConcesion. En Respuesta se devuelve el CodigoConcesion.BDNSCONCPAGPRY
+BDNSDEVOLREINT BDNSSANCINH3.5.10
+
+
+
+
