@@ -131,12 +131,18 @@ export const processConvocatoriaBatch = inngest.createFunction(
     id: "process-convocatoria-batch",
     name: "Procesar Lote de Convocatorias",
     concurrency: {
-      limit: 2,
+      limit: 1, // Reducir a 1 para evitar conflictos de prepared statements
     },
     retries: 3,
   },
   { event: "app/convocatoria.process.batch" },
   async ({ event, step, logger }) => {
+    // Pequeña pausa para evitar conflictos de prepared statements
+    await step.run("connection-stabilization", async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      logger.info("Pausa de estabilización completada");
+    });
+
     // Validación defensiva de los datos del evento
     // Si por alguna razón el evento llega sin datos de convocatorias, registramos el incidente y finalizamos sin lanzar excepción.
     if (!event.data || !event.data.convocatorias) {
@@ -247,6 +253,12 @@ export const processConvocatoriaBatch = inngest.createFunction(
         documentosPendientes: stats.sinStorage,
         porcentajeCompletado: `${stats.porcentajeCompletado}%`
       }
+    });
+    
+    // Pausa final para estabilizar conexiones
+    await step.run("final-stabilization", async () => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      logger.info("Estabilización final completada");
     });
     
     return { 

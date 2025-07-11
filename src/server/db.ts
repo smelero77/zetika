@@ -11,6 +11,9 @@ const getConnectionUrl = (baseUrl: string, disablePreparedStatements = false) =>
     // Parámetros clave para evitar problemas de prepared statements en serverless
     url.searchParams.set('prepared_statements', 'false');
     url.searchParams.set('pgbouncer', 'true');
+    url.searchParams.set('connection_limit', '1');
+    url.searchParams.set('pool_timeout', '20');
+    url.searchParams.set('connect_timeout', '10');
   }
   
   // Configuración básica de SSL para producción
