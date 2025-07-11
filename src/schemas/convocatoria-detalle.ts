@@ -2,37 +2,37 @@ import { z } from 'zod';
 
 // Esquemas auxiliares para catálogos
 const InstrumentoAyudaSchema = z.object({
-  descripcion: z.string().max(500).optional(),
+  descripcion: z.string().max(500).optional().nullable(),
 });
 
 const TipoBeneficiarioSchema = z.object({
-  descripcion: z.string().max(500).optional(),
+  descripcion: z.string().max(500).optional().nullable(),
 });
 
 const SectorSchema = z.object({
-  descripcion: z.string().max(200).optional(),
-  codigo: z.string().max(10).optional(),
+  descripcion: z.string().max(200).optional().nullable(),
+  codigo: z.string().max(10).optional().nullable(),
 });
 
 const RegionSchema = z.object({
-  descripcion: z.string().max(200).optional(),
+  descripcion: z.string().max(200).optional().nullable(),
 });
 
 const FondoSchema = z.object({
-  descripcion: z.string().max(200).optional(),
+  descripcion: z.string().max(200).optional().nullable(),
 });
 
 const ObjetivoSchema = z.object({
-  descripcion: z.string().max(500).optional(),
+  descripcion: z.string().max(500).optional().nullable(),
 });
 
 const SectorProductoSchema = z.object({
-  descripcion: z.string().max(200).optional(),
+  descripcion: z.string().max(200).optional().nullable(),
 });
 
 const ReglamentoUESchema = z.object({
-  descripcion: z.string().max(500).optional(),
-  autorizacion: z.number().int().positive().optional(),
+  descripcion: z.string().max(500).optional().nullable(),
+  autorizacion: z.number().int().positive().optional().nullable(),
 });
 
 const OrganoSchema = z.object({
@@ -43,22 +43,22 @@ const OrganoSchema = z.object({
 
 const DocumentoSchema = z.object({
   id: z.number().int().positive(),
-  descripcion: z.string().max(500).optional(),
-  nombreFic: z.string().max(255).optional(),
-  long: z.number().int().positive().optional(),
-  datMod: z.string().optional(), // Formato: YYYY-MM-DD
-  datPublicacion: z.string().optional(), // Formato: YYYY-MM-DD
+  descripcion: z.string().max(500).optional().nullable(),
+  nombreFic: z.string().max(255).optional().nullable(),
+  long: z.number().int().positive().optional().nullable(),
+  datMod: z.string().optional().nullable(), // Formato: YYYY-MM-DD
+  datPublicacion: z.string().optional().nullable(), // Formato: YYYY-MM-DD
 });
 
 const AnuncioSchema = z.object({
   numAnuncio: z.number().int().positive(),
-  titulo: z.string().max(1000).optional(),
-  tituloLeng: z.string().max(1000).optional(),
-  texto: z.string().optional(),
-  url: z.string().url().max(500).optional(),
-  cve: z.string().max(100).optional(),
-  desDiarioOficial: z.string().max(500).optional(),
-  datPublicacion: z.string().optional(),
+  titulo: z.string().max(1000).optional().nullable(),
+  tituloLeng: z.string().max(1000).optional().nullable(),
+  texto: z.string().optional().nullable(),
+  url: z.string().url().max(500).optional().nullable(),
+  cve: z.string().max(100).optional().nullable(),
+  desDiarioOficial: z.string().max(500).optional().nullable(),
+  datPublicacion: z.string().optional().nullable(),
 });
 
 // Función para validar fechas en formato YYYY-MM-DD
@@ -76,36 +76,36 @@ export const ConvocatoriaDetalleSchema = z.object({
   codigoBDNS: z.string().regex(/^\d+$/).max(20),
   
   // Campos adicionales de BDNS
-  numeroConvocatoria: z.string().max(50).optional(),
+  numeroConvocatoria: z.string().max(50).optional().nullable(),
   fechaPublicacion: z.string().refine(validateDate, {
     message: 'fechaPublicacion debe estar en formato YYYY-MM-DD'
-  }).optional(),
+  }).optional().nullable(),
   
   // Campos opcionales con validaciones
   organo: OrganoSchema.optional().nullable(),
   sedeElectronica: z.string().url().max(500).optional().nullable(),
   fechaRecepcion: z.string().refine(validateDate, {
     message: 'fechaRecepcion debe estar en formato YYYY-MM-DD'
-  }).optional(),
+  }).optional().nullable(),
   
   instrumentos: z.array(InstrumentoAyudaSchema).optional(),
-  tipoConvocatoria: z.string().max(200).optional(),
-  presupuestoTotal: z.number().positive().optional(),
-  mrr: z.boolean().optional(),
+  tipoConvocatoria: z.string().max(200).optional().nullable(),
+  presupuestoTotal: z.number().positive().optional().nullable(),
+  mrr: z.boolean().optional().nullable(),
   
-  descripcion: z.string().max(2000).optional(),
+  descripcion: z.string().max(2000).optional().nullable(),
   descripcionLeng: z.string().max(2000).optional().nullable(),
   
   tiposBeneficiarios: z.array(TipoBeneficiarioSchema).optional(),
   sectores: z.array(SectorSchema).optional(),
   regiones: z.array(RegionSchema).optional(),
   
-  descripcionFinalidad: z.string().max(500).optional(),
-  descripcionBasesReguladoras: z.string().max(1000).optional(),
-  urlBasesReguladoras: z.string().url().max(500).optional(),
+  descripcionFinalidad: z.string().max(500).optional().nullable(),
+  descripcionBasesReguladoras: z.string().max(1000).optional().nullable(),
+  urlBasesReguladoras: z.string().url().max(500).optional().nullable(),
   
-  sePublicaDiarioOficial: z.boolean().optional(),
-  abierto: z.boolean().optional(),
+  sePublicaDiarioOficial: z.boolean().optional().nullable(),
+  abierto: z.boolean().optional().nullable(),
   
   fechaInicioSolicitud: z.string().refine(validateDate, {
     message: 'fechaInicioSolicitud debe estar en formato YYYY-MM-DD'
@@ -114,8 +114,8 @@ export const ConvocatoriaDetalleSchema = z.object({
     message: 'fechaFinSolicitud debe estar en formato YYYY-MM-DD'
   }).optional().nullable(),
   
-  textInicio: z.string().max(500).optional(),
-  textFin: z.string().max(500).optional(),
+  textInicio: z.string().max(500).optional().nullable(),
+  textFin: z.string().max(500).optional().nullable(),
   
   ayudaEstado: z.string().max(100).optional().nullable(),
   urlAyudaEstado: z.string().url().max(500).optional().nullable(),
@@ -129,9 +129,9 @@ export const ConvocatoriaDetalleSchema = z.object({
   anuncios: z.array(AnuncioSchema).optional(),
   
   // Campos adicionales que pueden venir en BDNS
-  advertencia: z.string().max(2000).optional(),
-  estado: z.enum(['ACTIVA', 'INACTIVA', 'ANULADA', 'CANCELADA', 'DESIERTA']).optional(),
-  indInactiva: z.boolean().optional(),
+  advertencia: z.string().max(2000).optional().nullable(),
+  estado: z.enum(['ACTIVA', 'INACTIVA', 'ANULADA', 'CANCELADA', 'DESIERTA']).optional().nullable(),
+  indInactiva: z.boolean().optional().nullable(),
 }).refine((data) => {
   // Validaciones de negocio
   if (data.fechaInicioSolicitud && data.fechaFinSolicitud) {
