@@ -42,6 +42,97 @@ async function upsertWithRetry(model: any, params: any, maxRetries = 3): Promise
 }
 
 /**
+ * Función recursiva para procesar un nodo y todos sus hijos
+ * Ahora maneja la estructura jerárquica con nivel1, nivel2, nivel3
+ */
+async function processNode(
+  node: { id: number; descripcion: string; children?: any[] }, 
+  tipoAdmin: string, 
+  parentId?: number,
+  nivel1?: string,
+  nivel2?: string
+) {
+  const itemMeta = { tipoAdmin, itemId: node.id, parentId, nivel1, nivel2 };
+  const startItem = Date.now();
+  
+  try {
+    // Determinar los niveles jerárquicos
+    let currentNivel1 = nivel1;
+    let currentNivel2 = nivel2;
+    let currentNivel3: string | undefined;
+    
+    // Para el tipo Local (L), la estructura es: Provincia -> Municipio -> Ayuntamiento
+    if (tipoAdmin === 'L') {
+      if (!nivel1) {
+        // Es una provincia (nivel1)
+        currentNivel1 = node.descripcion;
+      } else if (!nivel2) {
+        // Es un municipio (nivel2)
+        currentNivel2 = node.descripcion;
+      } else {
+        // Es un ayuntamiento (nivel3)
+        currentNivel3 = node.descripcion;
+      }
+    } else {
+      // Para otros tipos, el primer nivel es nivel1, el segundo nivel2
+      if (!nivel1) {
+        currentNivel1 = node.descripcion;
+      } else if (!nivel2) {
+        currentNivel2 = node.descripcion;
+      } else {
+        currentNivel3 = node.descripcion;
+      }
+    }
+
+    // Buscar el órgano padre si existe
+    let organoPadreId: number | undefined;
+    if (parentId) {
+      const organoPadre = await db.organo.findFirst({
+        where: { idOficial: parentId }
+      });
+      organoPadreId = organoPadre?.id;
+    }
+
+    await upsertWithRetry(db.organo, {
+      where: { idOficial: node.id },
+      update: {
+        descripcion: node.descripcion,
+        nivel1: currentNivel1,
+        nivel2: currentNivel2,
+        nivel3: currentNivel3,
+        tipoAdministracion: tipoAdmin,
+        organoPadreId: organoPadreId,
+      },
+      create: {
+        idOficial: node.id,
+        descripcion: node.descripcion,
+        nivel1: currentNivel1,
+        nivel2: currentNivel2,
+        nivel3: currentNivel3,
+        tipoAdministracion: tipoAdmin,
+        organoPadreId: organoPadreId,
+      },
+    });
+
+    const duration = Date.now() - startItem;
+    metrics.histogram('etl.items.processed.duration_ms', duration);
+    
+    // Procesar hijos recursivamente
+    if (node.children) {
+      for (const child of node.children) {
+        await processNode(child, tipoAdmin, node.id, currentNivel1, currentNivel2);
+      }
+    }
+  } catch (e: unknown) {
+    metrics.increment('etl.items.errors');
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const error = e instanceof Error ? e : new Error(errorMessage);
+    logger.error(`Error procesando órgano (tipo ${tipoAdmin})`, error, itemMeta);
+    throw error;
+  }
+}
+
+/**
  * Sincroniza el catálogo de Órganos, que es jerárquico y requiere una llamada por tipo de administración.
  * @param tipoAdminFilter - Si se especifica, solo procesa ese tipo de administración
  */
@@ -56,48 +147,6 @@ async function syncOrganos(jobName: string, runId: string, tipoAdminFilter?: str
   let processed = 0;
   let errors = 0;
   const startAll = Date.now();
-
-  // Función recursiva para procesar un nodo y todos sus hijos
-  async function processNode(node: { id: number; descripcion: string; children?: any[] }, tipoAdmin: string) {
-    const idStr = String(node.id);
-    const itemMeta = { ...logMeta, tipoAdmin, itemId: idStr };
-    const startItem = Date.now();
-    try {
-      await upsertWithRetry(db.organo, {
-        where: { idOficial: idStr },
-        update: {
-          nombre: node.descripcion,
-          tipoAdministracion: tipoAdmin,
-        },
-        create: {
-          idOficial: idStr,
-          nombre: node.descripcion,
-          tipoAdministracion: tipoAdmin,
-        },
-      });
-      processed++;
-      metrics.increment('etl.items.processed');
-      const duration = Date.now() - startItem;
-      metrics.histogram('etl.items.processed.duration_ms', duration);
-      
-      // Solo logueamos cada 50 registros para reducir el ruido en los logs
-      if (processed % 50 === 0) {
-        logger.info(`Órganos procesados: ${processed} (tipo ${tipoAdmin})`, { ...logMeta, processed, durationMs: duration });
-      }
-      
-      if (node.children) {
-        for (const child of node.children) {
-          await processNode(child, tipoAdmin);
-        }
-      }
-    } catch (e: unknown) {
-      errors++;
-      metrics.increment('etl.items.errors');
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      const error = e instanceof Error ? e : new Error(errorMessage);
-      logger.error(`Error procesando órgano (tipo ${tipoAdmin})`, error, itemMeta);
-    }
-  }
 
   try {
     // Hacemos una llamada por cada tipo de órgano (Estatal, Autonómico, etc.)
@@ -124,7 +173,19 @@ async function syncOrganos(jobName: string, runId: string, tipoAdminFilter?: str
       logger.info(`📄 Obtenidos ${items.length} órganos raíz para administración ${tipoName}`, { ...logMeta, tipoAdmin, count: items.length });
 
       for (const root of items) {
-        await processNode(root, tipoAdmin);
+        try {
+          await processNode(root, tipoAdmin);
+          processed++;
+          metrics.increment('etl.items.processed');
+          
+          // Solo logueamos cada 50 registros para reducir el ruido en los logs
+          if (processed % 50 === 0) {
+            logger.info(`Órganos procesados: ${processed} (tipo ${tipoAdmin})`, { ...logMeta, processed });
+          }
+        } catch (e) {
+          errors++;
+          logger.error(`Error procesando órgano raíz ${root.id}`, e, { ...logMeta, tipoAdmin, organoId: root.id });
+        }
       }
       
       logger.info(`✅ Completada administración ${tipoName}`, { ...logMeta, tipoAdmin, processed });

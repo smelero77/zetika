@@ -39,7 +39,7 @@ model Convocatoria {
   /// Resumen conciso de la convocatoria, generado por IA para una lectura rápida.
   resumenIA                   String?
   /// ID del órgano convocante (clave foránea).
-  organoId                    String?
+  organoId                    Int?
   /// ID de la finalidad de la ayuda (clave foránea).
   finalidadId                 Int?
   /// ID del reglamento europeo aplicable (clave foránea).
@@ -306,11 +306,17 @@ model AyudaDeEstado {
 }
 
 model Organo {
-  id                 Int            @id @default(autoincrement())
-  idOficial          String         @unique
-  nombre             String
-  tipoAdministracion String?
-  convocatorias      Convocatoria[]
+  id               Int            @id @default(autoincrement())
+  idOficial        Int            @unique
+  descripcion      String
+  nivel1           String?
+  nivel2           String?
+  nivel3           String?
+  organoPadreId    Int?
+  organoPadre      Organo?        @relation("OrganoHierarchy", fields: [organoPadreId], references: [id])
+  organosHijos     Organo[]       @relation("OrganoHierarchy")
+  tipoAdministracion String       // 'C', 'A', 'L', 'O' (Central, Autonómica, Local, Otros)
+  convocatorias    Convocatoria[]
 }
 
 model Region {
