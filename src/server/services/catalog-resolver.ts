@@ -30,7 +30,7 @@ export class CatalogResolver {
    * Resuelve un catálogo específico usando métodos nativos de Prisma
    */
   private async resolveCatalogByType(
-    catalogType: 'instrumentoAyuda' | 'tipoBeneficiario' | 'actividad' | 'region' | 'fondo' | 'catalogoObjetivo' | 'sectorProducto' | 'reglamentoUE' | 'organo',
+    catalogType: 'instrumentoAyuda' | 'tipoBeneficiario' | 'actividad' | 'region' | 'fondo' | 'catalogoObjetivo' | 'sectorProducto' | 'reglamentoUE',
     description: string,
     cacheKey: string
   ): Promise<CatalogResolutionResult> {
@@ -139,16 +139,7 @@ export class CatalogResolver {
           });
           break;
 
-        case 'organo':
-          result = await db.organo.findFirst({
-            where: {
-              nombre: {
-                equals: description.trim(),
-                mode: 'insensitive'
-              }
-            }
-          });
-          break;
+
       }
 
       if (result?.id) {
@@ -252,21 +243,12 @@ export class CatalogResolver {
           });
           break;
 
-        case 'organo':
-          similarResult = await db.organo.findFirst({
-            where: {
-              nombre: {
-                contains: description.trim(),
-                mode: 'insensitive'
-              }
-            }
-          });
-          break;
+
       }
 
       if (similarResult?.id) {
         this.cache.set(cacheKey, similarResult.id);
-        const resultDescription = similarResult.descripcion || similarResult.nombre;
+        const resultDescription = similarResult.descripcion;
         logger.warn(`Catálogo ${catalogType} resuelto por similitud: "${description}" → "${resultDescription}"`);
         return {
           found: true,
@@ -411,64 +393,7 @@ export class CatalogResolver {
     };
   }
 
-  /**
-   * Resuelve órgano convocante
-   */
-  async resolveOrgano(organo?: { nivel1?: string | null; nivel2?: string | null; nivel3?: string | null } | null): Promise<{ ids: number[]; summary: CatalogResolutionSummary }> {
-    if (!organo?.nivel1?.trim() && !organo?.nivel2?.trim()) {
-      return { 
-        ids: [], 
-        summary: { 
-          totalResolved: 0, 
-          totalNotFound: 0, 
-          needsManualReview: false, 
-          missingCatalogs: [] 
-        } 
-      };
-    }
 
-    // Buscar por nivel1 + nivel2 (más específico)
-    if (organo.nivel1?.trim() && organo.nivel2?.trim()) {
-      const cacheKey = `organo:${organo.nivel1.trim().toLowerCase()}:${organo.nivel2.trim().toLowerCase()}`;
-      const result = await this.resolveCatalogByType('organo', `${organo.nivel1} - ${organo.nivel2}`, cacheKey);
-      if (result.found && result.id) {
-        return {
-          ids: [result.id],
-          summary: {
-            totalResolved: 1,
-            totalNotFound: 0,
-            needsManualReview: false,
-            missingCatalogs: []
-          }
-        };
-      }
-    }
-
-    // Fallback: buscar solo por nivel1
-    if (organo.nivel1?.trim()) {
-      const cacheKey = `organo:${organo.nivel1.trim().toLowerCase()}`;
-      const result = await this.resolveCatalogByType('organo', organo.nivel1, cacheKey);
-      return {
-        ids: result.found && result.id ? [result.id] : [],
-        summary: {
-          totalResolved: result.found ? 1 : 0,
-          totalNotFound: result.found ? 0 : 1,
-          needsManualReview: result.needsManualReview ?? false,
-          missingCatalogs: result.needsManualReview && result.description ? [`Órgano: ${result.description}`] : []
-        }
-      };
-    }
-
-    return {
-      ids: [],
-      summary: {
-        totalResolved: 0,
-        totalNotFound: 1,
-        needsManualReview: true,
-        missingCatalogs: [`Órgano: ${organo.nivel1 || ''} - ${organo.nivel2 || ''} - ${organo.nivel3 || ''}`.trim()]
-      }
-    };
-  }
 
   /**
    * Limpia el cache (útil para tests o cuando se actualizan catálogos)

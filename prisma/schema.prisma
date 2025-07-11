@@ -99,6 +99,12 @@ model Convocatoria {
   needsManualReview         Boolean?                 @default(false)
   /// Relación con Sectores de Producto (nuevo pivot)
   sectoresDeProducto        SectorProducto[]         @relation("ConvocatoriaToSectorProducto")
+  /// Texto de inicio del periodo de solicitud
+  textInicio                String?
+  /// Texto de finalización del periodo de solicitud  
+  textFin                   String?
+  /// Descripción de la finalidad (política de gasto)
+  descripcionFinalidad      String?
 
   @@index([organoId])
   @@index([finalidadId])
@@ -109,26 +115,50 @@ model Convocatoria {
 /// Almacena cada ayuda específica que ha sido concedida a un beneficiario concreto.
 model Concesion {
   /// Identificador único interno.
-  id               Int               @id @default(autoincrement())
+  id                    Int               @id @default(autoincrement())
   /// ID oficial de la concesión en la API. Se usa para evitar duplicados.
-  idOficial        Int               @unique
-  /// Importe monetario concedido.
-  importe          Float
-  /// Importe de la ayuda expresado en "equivalente de subvención bruta".
-  ayudaEquivalente Float
+  idOficial             Int               @unique
+  /// ID de la convocatoria a la que pertenece.
+  idConvocatoria        Int
+  /// Código BDNS de la convocatoria.
+  numeroConvocatoria    String
+  /// Título de la convocatoria.
+  convocatoria          String
+  /// Título de la convocatoria en lengua cooficial.
+  descripcionCooficial  String?
+  /// Nivel 1 del órgano convocante.
+  nivel1                String
+  /// Nivel 2 del órgano convocante.
+  nivel2                String
+  /// Nivel 3 del órgano convocante.
+  nivel3                String?
+  /// Código INVENTE del órgano convocante.
+  codigoInvente         String?
   /// Fecha en la que se concedió oficialmente la ayuda.
-  fechaConcesion   DateTime
-  /// ID (oficial) de la convocatoria a la que pertenece.
-  convocatoriaId   Int
-  /// ID (oficial) del beneficiario que ha recibido la ayuda.
-  beneficiarioId   Int
-  /// ID (oficial) del instrumento de ayuda.
-  instrumentoId    Int?
-  beneficiario     Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
-  convocatoria     Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
-  instrumento      InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+  fechaConcesion        DateTime
+  /// ID de la persona beneficiaria de la concesión.
+  idPersona             Int
+  /// Seudónimo y nombre/razón social de la persona beneficiaria.
+  beneficiario          String
+  /// Instrumento de ayuda.
+  instrumento           String
+  /// Importe monetario concedido.
+  importe               Float
+  /// Importe de la ayuda expresado en "equivalente de subvención bruta".
+  ayudaEquivalente      Float
+  /// URL de las bases reguladoras de la convocatoria.
+  urlBR                 String?
+  /// Indica si la concesión tiene un proyecto asociado.
+  tieneProyecto         Boolean
+  /// ID (oficial) del beneficiario que ha recibido la ayuda (relación).
+  beneficiarioId        Int
+  /// ID (oficial) del instrumento de ayuda (relación).
+  instrumentoId         Int?
+  beneficiarioRef       Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoriaRef       Convocatoria      @relation(fields: [idConvocatoria], references: [idOficial])
+  instrumentoRef        InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
 
-  @@index([convocatoriaId])
+  @@index([idConvocatoria])
   @@index([beneficiarioId])
   @@index([instrumentoId])
 }
@@ -173,6 +203,7 @@ model Anuncio {
   titulo           String
   tituloLeng       String?
   texto            String?
+  textoLeng        String?
   url              String?
   cve              String?
   desDiarioOficial String?
@@ -193,11 +224,18 @@ model Objetivo {
 }
 
 model GranBeneficiario {
-  id             Int          @id @default(autoincrement())
-  ejercicio      Int
-  ayudaTotal     Float
-  beneficiarioId Int
-  beneficiario   Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+  id                    Int          @id @default(autoincrement())
+  /// Identificador de la persona que es un gran beneficiario.
+  idPersona             Int          @unique
+  /// Seudónimo y Nombre y Apellidos/Razón Social del beneficiario.
+  beneficiario          String
+  /// Año en el que la persona ha sido un gran beneficiario.
+  ejercicio             Int
+  /// Ayuda total recibida por el beneficiario durante el ejercicio.
+  ayudaETotal           Float
+  /// ID (oficial) del beneficiario (relación).
+  beneficiarioId        Int
+  beneficiarioRef       Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
 
   @@unique([beneficiarioId, ejercicio])
   @@index([beneficiarioId])
@@ -205,61 +243,129 @@ model GranBeneficiario {
 }
 
 model Minimis {
-  id               Int             @id @default(autoincrement())
-  idConcesion      Int             @unique
-  codigoConcesion  String
-  fechaConcesion   DateTime
-  fechaRegistro    DateTime
-  ayudaEquivalente Float
-  convocante       String
-  reglamento       String
-  instrumento      String
-  sectorActividad  String
-  convocatoriaId   Int
-  beneficiarioId   Int
-  sectorProductoId Int?
-  beneficiario     Beneficiario    @relation(fields: [beneficiarioId], references: [id], onDelete: Cascade)
-  convocatoria     Convocatoria    @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
-  sectorProducto   SectorProducto? @relation(fields: [sectorProductoId], references: [id])
+  id                    Int             @id @default(autoincrement())
+  /// Identificador de la concesión.
+  idConcesion           Int             @unique
+  /// Identificador de la convocatoria.
+  idConvocatoria        Int
+  /// Identificador de la persona.
+  idPersona             Int
+  /// Código de la concesión.
+  codigoConcesion       String
+  /// Código BDNS de la convocatoria.
+  numeroConvocatoria    String
+  /// Órgano convocante.
+  convocante            String
+  /// Descripción del reglamento.
+  reglamento            String
+  /// Descripción del sector de producto.
+  sectorProducto        String?
+  /// Descripción del instrumento.
+  instrumento           String
+  /// Fecha de la concesión.
+  fechaConcesion        DateTime
+  /// Fecha de registro.
+  fechaRegistro         DateTime
+  /// Seudónimo y nombre/razón social de la persona beneficiaria.
+  beneficiario          String
+  /// Descripción del sector de la actividad.
+  sectorActividad       String
+  /// Ayuda equivalente de la concesión.
+  ayudaEquivalente      Float
+  /// ID (oficial) del beneficiario (relación).
+  beneficiarioId        Int
+  /// ID (oficial) de la convocatoria (relación).
+  convocatoriaId        Int
+  /// ID (oficial) del sector de producto (relación).
+  sectorProductoId      Int?
+  beneficiarioRef       Beneficiario    @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoriaRef       Convocatoria    @relation(fields: [idConvocatoria], references: [idOficial])
+  sectorProductoRef     SectorProducto? @relation(fields: [sectorProductoId], references: [idOficial])
 
   @@index([fechaRegistro])
-  @@index([convocatoriaId])
+  @@index([idConvocatoria])
   @@index([beneficiarioId])
   @@index([sectorProductoId])
 }
 
 model PlanEstrategico {
-  id                   Int     @id @default(autoincrement())
-  idOficial            Int     @unique
-  descripcion          String
-  descripcionCooficial String?
-  tipoPlan             String
-  vigenciaDesde        Int
-  vigenciaHasta        Int
-  ambitos              String?
-  convocatoriaId          Int?
-  convocatoria            Convocatoria?  @relation(fields: [convocatoriaId], references: [idOficial])
+  id                    Int     @id @default(autoincrement())
+  /// Identificador del plan estratégico.
+  idOficial             Int     @unique
+  /// Título del plan estratégico en español.
+  descripcion           String
+  /// Título del plan estratégico en lengua cooficial.
+  descripcionCooficial  String?
+  /// Tipo de plan estratégico.
+  tipoPlan              String
+  /// Año inicial en el que tiene vigencia el plan estratégico.
+  vigenciaDesde         Int
+  /// Año final en el que tiene vigencia el plan estratégico.
+  vigenciaHasta         Int
+  /// Fecha de aprobación.
+  fechaAprobacion       DateTime?
+  /// Ámbitos del plan estratégico (JSON array).
+  ambitos               Json?
+  /// Advertencia legal.
+  advertencia           String?
+  /// ID (oficial) de la convocatoria (relación opcional).
+  convocatoriaId        Int?
+  convocatoria          Convocatoria?  @relation(fields: [convocatoriaId], references: [idOficial])
+  /// Documentos del plan estratégico.
+  documentos            DocumentoPlanEstrategico[]
+}
+
+model DocumentoPlanEstrategico {
+  id                    Int             @id @default(autoincrement())
+  /// Identificador del documento.
+  idOficial             Int             @unique
+  /// Ejercicio del documento.
+  ejercicio             Int?
+  /// Nombre del archivo.
+  nombreFic             String?
+  /// Tipo de documento.
+  tipoDocumento         String?
+  /// ID del plan estratégico al que pertenece.
+  planEstrategicoId     Int
+  planEstrategico       PlanEstrategico @relation(fields: [planEstrategicoId], references: [idOficial], onDelete: Cascade)
+
+  @@index([planEstrategicoId])
 }
 
 model Sancion {
-  id                   Int          @id @default(autoincrement())
-  numeroConvocatoria   String
-  tituloConvocatoria   String
-  organoNivel1         String?
-  organoNivel2         String?
-  organoNivel3         String?
-  codigoINVENTE        String?
-  fechaConcesion       DateTime
-  infraccion           String
-  importe              Float
-  sancionado           String
-  fechaSancion         DateTime
-  importeMulta         Float
-  inicioInhabilitacion DateTime?
-  finInhabilitacion    DateTime?
-  beneficiarioId       Int
-  beneficiario         Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
-  convocatoria         Convocatoria @relation(fields: [numeroConvocatoria], references: [codigoBDNS])
+  id                    Int          @id @default(autoincrement())
+  /// Código BDNS de la convocatoria de la que deriva la sanción.
+  numeroConvocatoria    String
+  /// Título de la convocatoria de la que deriva la sanción.
+  convocatoria          String
+  /// Nivel 1 del órgano convocante de la convocatoria de la que deriva la sanción.
+  nivel1                String
+  /// Nivel 2 del órgano convocante de la convocatoria de la que deriva la sanción.
+  nivel2                String
+  /// Nivel 3 del órgano convocante de la convocatoria de la que deriva la sanción.
+  nivel3                String?
+  /// Código INVENTE del órgano convocante de la convocatoria de la que deriva la sanción.
+  codigoINVENTE         String?
+  /// Fecha de la concesión de la que deriva la sanción.
+  fechaConcesion        DateTime
+  /// Infracción por la que se ha sancionado.
+  infraccion            String
+  /// Importe de la concesión de la que deriva la sanción.
+  importe               Float
+  /// Seudónimo y Nombre y Apellidos/Razón Social del sancionado.
+  sancionado            String
+  /// Fecha de la sanción.
+  fechaSancion          DateTime
+  /// Importe de la multa de la sanción.
+  importeMulta          Float
+  /// Fecha de inicio de la inhabilitación.
+  inicioInhabilitacion  DateTime?
+  /// Fecha de fin de la inhabilitación.
+  finInhabilitacion     DateTime?
+  /// ID (oficial) del beneficiario (relación).
+  beneficiarioId        Int
+  beneficiario          Beneficiario @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoriaRef       Convocatoria @relation(fields: [numeroConvocatoria], references: [codigoBDNS])
 
   @@unique([numeroConvocatoria, sancionado, fechaSancion])
   @@index([numeroConvocatoria])
@@ -269,38 +375,81 @@ model Sancion {
 model ConcesionPartidoPolitico {
   id                  Int          @id @default(autoincrement())
   idOficial           Int          @unique
+  idConvocatoria      Int
   numeroConvocatoria  String
-  tituloConvocatoria  String
-  urlBasesReguladoras String?
+  convocatoria        String
+  nivel1              String
+  nivel2              String
+  nivel3              String?
+  codigoInvente       String?
+  fechaConcesion      DateTime
   codConcesion        String
   beneficiario        String
   instrumento         String
   importe             Float
   ayudaEquivalente    Float
+  urlBR               String?
   tieneProyecto       Boolean
-  fechaConcesion      DateTime
-  convocatoriaId      Int
-  convocatoria        Convocatoria @relation(fields: [convocatoriaId], references: [idOficial])
+  convocatoriaRef     Convocatoria @relation(fields: [idConvocatoria], references: [idOficial])
 
-  @@index([convocatoriaId])
+  @@index([idConvocatoria])
 }
 
 model AyudaDeEstado {
-  id                 Int               @id @default(autoincrement())
-  idOficial          Int               @unique
-  tituloConvocatoria String
-  beneficiarioNombre String
-  importe            Float
-  ayudaEquivalente   Float
-  fechaConcesion     DateTime
-  convocatoriaId     Int
-  beneficiarioId     Int
-  instrumentoId      Int?
-  beneficiario       Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
-  convocatoria       Convocatoria      @relation(fields: [convocatoriaId], references: [idOficial])
-  instrumento        InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
+  id                    Int               @id @default(autoincrement())
+  /// Identificador de la concesión.
+  idConcesion           Int               @unique
+  /// Identificador de la convocatoria.
+  idConvocatoria        Int
+  /// Identificador de la persona.
+  idPersona             Int
+  /// Código BDNS de la convocatoria.
+  numeroConvocatoria    String
+  /// Título de la convocatoria.
+  convocatoria          String
+  /// Órgano convocante de la convocatoria.
+  convocante            String
+  /// Reglamento (UE).
+  reglamento            String
+  /// Objetivos de la ayuda.
+  objetivo              String
+  /// Instrumento de ayuda.
+  instrumento           String
+  /// Tipo de beneficiario.
+  tipoBeneficiario      String
+  /// Fecha de la concesión.
+  fechaConcesion        DateTime
+  /// Fecha de registro de la concesión.
+  fechaAlta             DateTime
+  /// Identificador de la persona beneficiaria de la concesión.
+  beneficiario          String
+  /// Importe de la concesión.
+  importe               Float
+  /// Ayuda equivalente de la concesión.
+  ayudaEquivalente      Float
+  /// Región NUTS de concesión.
+  region                String
+  /// Actividad NACE del beneficiario.
+  sectores              String?
+  /// Referencia de ayuda de estado.
+  ayudaEstado           String?
+  /// URL de la referencia de ayuda de estado.
+  urlAyudaEstado        String?
+  /// Entidad de la concesión de ayuda de estado.
+  entidad               String?
+  /// Intermediario de la concesión de ayuda de estado.
+  intermediario         String?
+  /// ID (oficial) del beneficiario (relación).
+  beneficiarioId        Int
+  /// ID (oficial) de la convocatoria (relación).
+  convocatoriaId        Int
+  /// ID (oficial) del instrumento de ayuda (relación).
+  instrumentoId         Int?
+  beneficiarioRef       Beneficiario      @relation(fields: [beneficiarioId], references: [idOficial])
+  convocatoriaRef       Convocatoria      @relation(fields: [idConvocatoria], references: [idOficial])
+  instrumentoRef        InstrumentoAyuda? @relation(fields: [instrumentoId], references: [idOficial])
 
-  @@index([convocatoriaId])
+  @@index([idConvocatoria])
   @@index([beneficiarioId])
   @@index([instrumentoId])
 }
@@ -336,6 +485,7 @@ model Finalidad {
 model TipoBeneficiario {
   id            Int            @id @default(autoincrement())
   idOficial     Int            @unique
+  codigo        String?
   descripcion   String
   convocatorias Convocatoria[] @relation("ConvocatoriaToTipoBeneficiario")
 }
@@ -361,6 +511,7 @@ model ReglamentoUE {
   id            Int            @id @default(autoincrement())
   idOficial     Int            @unique
   descripcion   String
+  autorizacion  Int?
   convocatorias Convocatoria[]
 }
 

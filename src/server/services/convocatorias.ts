@@ -15,7 +15,7 @@ import {
   existingConvocatoriasCache,
 } from './cache';
 import { validateAndSanitizeConvocatoriaDetalle, sanitizeString, type ConvocatoriaDetalle } from '~/schemas/convocatoria-detalle';
-import { catalogResolver } from '~/server/services/catalog-resolver';
+
 
 const PORTAL = process.env.SNPSAP_PORTAL ?? 'GE';
 
@@ -98,57 +98,11 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
     // Calcular hash con datos sanitizados
     const newHash = computeContentHash(validatedDetalle as unknown as Record<string, unknown>);
     
-    // --- PASO 2: RESOLVER CATÁLOGOS POR DESCRIPCIÓN ---
-    const [
-        tiposBeneficiariosResult,
-        instrumentosResult,
-        sectoresResult,
-        regionesResult,
-        fondosResult,
-        objetivosResult,
-        sectoresProductosResult,
-        reglamentoResult,
-        organoResult,
-    ] = await Promise.all([
-        catalogResolver.resolveTiposBeneficiarios(validatedDetalle.tiposBeneficiarios || []),
-        catalogResolver.resolveInstrumentos(validatedDetalle.instrumentos || []),
-        catalogResolver.resolveSectores(validatedDetalle.sectores || []),
-        catalogResolver.resolveRegiones(validatedDetalle.regiones || []),
-        catalogResolver.resolveFondos(validatedDetalle.fondos || []),
-        catalogResolver.resolveObjetivos(validatedDetalle.objetivos || []),
-        catalogResolver.resolveSectoresProductos(validatedDetalle.sectoresProductos || []),
-        catalogResolver.resolveReglamentoUE(validatedDetalle.reglamento),
-        catalogResolver.resolveOrgano(validatedDetalle.organo),
-    ]);
-    
-    // --- PASO 3: DETERMINAR SI NECESITA REVISIÓN MANUAL ---
-    const allSummaries = [
-        tiposBeneficiariosResult.summary,
-        instrumentosResult.summary,
-        sectoresResult.summary,
-        regionesResult.summary,
-        fondosResult.summary,
-        objetivosResult.summary,
-        sectoresProductosResult.summary,
-    ];
-    
-    const needsManualReview = allSummaries.some(s => s.needsManualReview) || 
-                             reglamentoResult.summary.needsManualReview || 
-                             organoResult.summary.needsManualReview;
-    
-    const missingCatalogs = allSummaries.flatMap(s => s.missingCatalogs);
-    missingCatalogs.push(...reglamentoResult.summary.missingCatalogs);
-    missingCatalogs.push(...organoResult.summary.missingCatalogs);
-    
-    if (missingCatalogs.length > 0) {
-        logger.warn(`Convocatoria ${detalle.id} tiene catálogos faltantes:`, { 
-            ...logMeta, 
-            missingCatalogs,
-            needsManualReview 
-        });
-    }
+    // --- PASO 2: SIN VALIDACIONES DE CATÁLOGOS ---
+    // Los datos se guardan tal como vienen de la API SNPSAP
+    const needsManualReview = false; // Ya no necesitamos revisión manual por catálogos
 
-    // --- PASO 4: UPSERT PRINCIPAL CON RELACIONES M-M ANIDADAS ---
+    // --- PASO 3: UPSERT PRINCIPAL SIN VALIDACIONES DE CATÁLOGOS ---
     const convocatoria = await db.convocatoria.upsert({
         where: { idOficial: validatedDetalle.id },
         create: {
@@ -182,14 +136,7 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
             nivel1: validatedDetalle.organo?.nivel1,
             nivel2: validatedDetalle.organo?.nivel2,
             nivel3: validatedDetalle.organo?.nivel3,
-            // Relaciones M-M con catálogos resueltos
-            tiposBeneficiario: { connect: tiposBeneficiariosResult.ids.map(id => ({ id })) },
-            instrumentosAyuda: { connect: instrumentosResult.ids.map(id => ({ id })) },
-            regionesDeImpacto: { connect: regionesResult.ids.map(id => ({ id })) },
-            fondosEuropeos: { connect: fondosResult.ids.map(id => ({ id })) },
-            sectoresEconomicos: { connect: sectoresResult.ids.map(id => ({ id })) },
-            sectoresDeProducto: { connect: sectoresProductosResult.ids.map(id => ({ id })) },
-            objetivos: { connect: objetivosResult.ids.map(id => ({ id })) },
+            // Sin relaciones M-M - los datos se guardan tal como vienen
         },
         update: {
             titulo: validatedDetalle.descripcion || '',
@@ -219,18 +166,11 @@ export async function processAndSaveDetalle(detalle: ConvocatoriaDetalle, jobNam
             nivel1: validatedDetalle.organo?.nivel1,
             nivel2: validatedDetalle.organo?.nivel2,
             nivel3: validatedDetalle.organo?.nivel3,
-            // Relaciones M-M con catálogos resueltos
-            tiposBeneficiario: { set: tiposBeneficiariosResult.ids.map(id => ({ id })) },
-            instrumentosAyuda: { set: instrumentosResult.ids.map(id => ({ id })) },
-            regionesDeImpacto: { set: regionesResult.ids.map(id => ({ id })) },
-            fondosEuropeos: { set: fondosResult.ids.map(id => ({ id })) },
-            sectoresEconomicos: { set: sectoresResult.ids.map(id => ({ id })) },
-            sectoresDeProducto: { set: sectoresProductosResult.ids.map(id => ({ id })) },
-            objetivos: { set: objetivosResult.ids.map(id => ({ id })) },
+            // Sin relaciones M-M - los datos se guardan tal como vienen
         },
     });
 
-    // --- PASO 3: SINCRONIZAR RELACIONES 1-N EN PARALELO ---
+    // --- PASO 4: SINCRONIZAR RELACIONES 1-N EN PARALELO ---
     const syncTasks: Promise<unknown>[] = [];
     const syncTaskNames: string[] = [];
 

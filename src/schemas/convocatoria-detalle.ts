@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+// Función para validar URLs de forma más flexible
+const validateOptionalUrl = (url: string | null | undefined) => {
+  if (!url || url.trim() === '') return true; // Permitir vacío
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // Esquemas auxiliares para catálogos
 const InstrumentoAyudaSchema = z.object({
   descripcion: z.string().max(500).optional().nullable(),
@@ -55,7 +66,9 @@ const AnuncioSchema = z.object({
   titulo: z.string().max(1000).optional().nullable(),
   tituloLeng: z.string().max(1000).optional().nullable(),
   texto: z.string().optional().nullable(),
-  url: z.string().url().max(500).optional().nullable(),
+  url: z.string().max(500).refine(validateOptionalUrl, {
+    message: 'url debe ser una URL válida o estar vacía'
+  }).optional().nullable(),
   cve: z.string().max(100).optional().nullable(),
   desDiarioOficial: z.string().max(500).optional().nullable(),
   datPublicacion: z.string().optional().nullable(),
@@ -83,7 +96,9 @@ export const ConvocatoriaDetalleSchema = z.object({
   
   // Campos opcionales con validaciones
   organo: OrganoSchema.optional().nullable(),
-  sedeElectronica: z.string().url().max(500).optional().nullable(),
+  sedeElectronica: z.string().max(500).refine(validateOptionalUrl, {
+    message: 'sedeElectronica debe ser una URL válida o estar vacía'
+  }).optional().nullable(),
   fechaRecepcion: z.string().refine(validateDate, {
     message: 'fechaRecepcion debe estar en formato YYYY-MM-DD'
   }).optional().nullable(),
@@ -102,7 +117,9 @@ export const ConvocatoriaDetalleSchema = z.object({
   
   descripcionFinalidad: z.string().max(500).optional().nullable(),
   descripcionBasesReguladoras: z.string().max(1000).optional().nullable(),
-  urlBasesReguladoras: z.string().url().max(500).optional().nullable(),
+  urlBasesReguladoras: z.string().max(500).refine(validateOptionalUrl, {
+    message: 'urlBasesReguladoras debe ser una URL válida o estar vacía'
+  }).optional().nullable(),
   
   sePublicaDiarioOficial: z.boolean().optional().nullable(),
   abierto: z.boolean().optional().nullable(),
@@ -118,7 +135,9 @@ export const ConvocatoriaDetalleSchema = z.object({
   textFin: z.string().max(500).optional().nullable(),
   
   ayudaEstado: z.string().max(100).optional().nullable(),
-  urlAyudaEstado: z.string().url().max(500).optional().nullable(),
+  urlAyudaEstado: z.string().max(500).refine(validateOptionalUrl, {
+    message: 'urlAyudaEstado debe ser una URL válida o estar vacía'
+  }).optional().nullable(),
   
   fondos: z.array(FondoSchema).optional(),
   reglamento: ReglamentoUESchema.optional().nullable(),
